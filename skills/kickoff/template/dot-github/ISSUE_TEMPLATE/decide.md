@@ -11,7 +11,8 @@ labels: decide
 ## Why it is the owner's
 
 <!-- Which item of the closed list: schema or API contract; authentication, payment or tenant
-     isolation; a new provider or vendor; a price; a screen or flow with no design; an expense. -->
+     isolation; a new provider or vendor; a price; a screen or flow with no design; an expense;
+     building less than what was specified. -->
 
 ## Options
 

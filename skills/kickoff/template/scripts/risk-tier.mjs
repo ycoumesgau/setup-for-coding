@@ -6,8 +6,12 @@
  * decided by code instead, from paths, so that attention goes where a mistake costs:
  *   0  content only: merges once CI is green and one fresh-context review found nothing blocking;
  *   1  ordinary code: reviewed with fresh context, merged by whoever holds the merge;
- *   2  checks, CI, access, money, schema: a second review pass by someone who did not write
- *      it, and the owner merges.
+ *   2  the project's own checks, CI and contract, or authentication, tenancy, billing and
+ *      migrations: the owner merges.
+ *
+ * A rule may also ask for a second review pass, by someone who did not write the change. The
+ * template asks it for authentication, tenancy, billing and migrations only: a second pass on
+ * everything is a second pass nobody reads.
  *
  * The rules live in `risk-tiers.json`. The first rule that matches a file gives its tier; a
  * change takes the highest tier among its files.
@@ -25,19 +29,21 @@ import { fileURLToPath } from 'node:url'
 
 import { globToRegExp } from './agent-memory-check.mjs'
 
-export const tierOfFile = (file, config) => {
-  for (const rule of config.rules) {
-    if (rule.paths.some((glob) => globToRegExp(glob).test(file))) return rule.tier
-  }
-  return config.default
+/** The first rule that names the file, or `null`. Paths are compared without a leading "./". */
+const ruleOf = (file, config) => {
+  const path = file.replace(/^\.\//, '')
+  return config.rules.find((rule) => rule.paths.some((glob) => globToRegExp(glob).test(path))) ?? null
 }
+
+export const tierOfFile = (file, config) => ruleOf(file, config)?.tier ?? config.default
 
 /** The tier of a change and the files that set it; `null` when nothing changed. */
 export const tierOf = (files, config) => {
-  if (files.length === 0) return { tier: null, setBy: [] }
+  if (files.length === 0) return { tier: null, setBy: [], secondPass: [] }
   const tiers = files.map((file) => ({ file, tier: tierOfFile(file, config) }))
   const tier = Math.max(...tiers.map((entry) => entry.tier))
-  return { tier, setBy: tiers.filter((entry) => entry.tier === tier).map((entry) => entry.file).sort() }
+  const secondPass = files.filter((file) => ruleOf(file, config)?.secondPass === true).sort()
+  return { tier, setBy: tiers.filter((entry) => entry.tier === tier).map((entry) => entry.file).sort(), secondPass }
 }
 
 export const configProblems = (config) => {
@@ -86,6 +92,9 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   } else {
     const shown = result.setBy.slice(0, 5).join(', ') + (result.setBy.length > 5 ? `, +${result.setBy.length - 5}` : '')
     process.stdout.write(`risk tier ${result.tier}: ${config.tiers?.[result.tier] ?? ''}\n  set by: ${shown}\n`)
+    if (result.secondPass.length > 0) {
+      process.stdout.write(`  second review pass, by someone who did not write it: ${result.secondPass.slice(0, 5).join(', ')}\n`)
+    }
   }
   const max = option('max')
   if (max !== undefined && result.tier !== null && result.tier > Number(max)) process.exit(1)

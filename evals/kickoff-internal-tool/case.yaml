@@ -1,0 +1,66 @@
+schema_version: "1.1"
+name: kickoff-internal-tool
+description: A kickoff from an empty repository for a small internal tool, to check that the procedure does not impose what a small project does not need.
+tags: [kickoff]
+runs: 1
+expected_outcome: >
+  The same contract and checks as any project, a single app, no tenancy rules invented, no
+  module adopted without its trigger, and verify green.
+execution:
+  max_turns: 90
+  timeout_seconds: 2400
+  allowed_tools: [Read, Glob, Grep, Skill]
+  prompt: |
+    /setup:kickoff Ledgerline
+
+    I am the owner. My answers to your interview, so that you do not have to ask:
+
+    1. Product: Ledgerline, an internal tool that reconciles two exports from our accounting
+       system every morning and shows the differences. Five colleagues use it. Not sold.
+    2. Data: our own accounting figures. Hosted in the EU. No model inference at all.
+    3. Surfaces at the start: one web app. Nothing else.
+    4. Stack: one TypeScript app with a managed Postgres. Choose the rest.
+    5. Design: none; plain tables are fine.
+    6. Languages: everything in English.
+    7. Tracker: the repository's issues.
+    8. Merging: I merge by hand. A merge does not deploy by itself. Nothing merges alone.
+
+    There is no product code yet and you must not write any: finish the kickoff, commit on a
+    branch, and do not open a pull request (there is no remote). End with the list of what
+    only I can do.
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: template-laid-by-the-installer
+    type: tool_used
+    tool: Bash
+    input_match: "init\\.mjs"
+  - name: verify-was-run
+    type: tool_used
+    tool: Bash
+    input_match: "verify\\.mjs"
+  - name: contract-names-the-project
+    type: regex
+    target: { source: file, path: AGENTS.md }
+    pattern: "^# AGENTS\\.md — Ledgerline"
+    flags: m
+  - name: no-placeholder-left
+    type: regex
+    target: { source: file, path: AGENTS.md }
+    pattern: "TODO\\(kickoff\\)"
+    match: not_contains
+  - name: no-merge-queue-without-its-trigger
+    type: regex
+    target: { source: file, path: .github/workflows/ci.yml }
+    pattern: "merge_group"
+    match: not_contains
+  - name: no-auto-merge-without-the-owner
+    type: file_exists
+    path: ".github/workflows/auto-merge.yml"
+    exists: false
+  - name: a-decision-was-recorded
+    type: file_exists
+    path: "docs/adr/20*.md"
+  - name: owner-told-to-require-the-check
+    type: regex
+    pattern: "Verify"

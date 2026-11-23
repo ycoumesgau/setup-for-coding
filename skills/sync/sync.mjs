@@ -17,7 +17,7 @@ import { chmodSync, copyFileSync, existsSync, mkdirSync, readFileSync, statSync 
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { TEMPLATE, templateFiles } from '../kickoff/init.mjs'
+import { MODULES, TEMPLATE, modules, templateFiles } from '../kickoff/init.mjs'
 
 /** What a project owns once it has it: never compared, only reported when missing. */
 export const PROJECT_OWNED = [
@@ -28,7 +28,24 @@ export const PROJECT_OWNED = [
   '.github/pull_request_template.md',
   'verify.config.json',
   'risk-tiers.json',
+  'exceptions.json',
+  // Guidance a project is expected to adapt to its own words.
+  'docs/adr/README.md',
+  'docs/plans/README.md',
+  'docs/pitfalls/README.md',
 ]
+
+/**
+ * The modules a project adopted: those with a file of their own already in the project. A
+ * module whose only file replaces one of the template's cannot be told apart, and what it
+ * replaces is the project's anyway.
+ */
+export const adoptedModules = (readProject, all = modules(), base = templateFiles()) =>
+  all.filter((module) =>
+    templateFiles(join(MODULES, module.name, 'files')).some(
+      ({ to }) => !base.some((file) => file.to === to) && isManaged(to) && readProject(to) !== null,
+    ),
+  )
 
 export const isManaged = (path) => !PROJECT_OWNED.includes(path)
 
@@ -54,8 +71,14 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const read = (root) => (path) => (existsSync(join(root, path)) ? readFileSync(join(root, path), 'utf8') : null)
   const config = read(target)('setup-sync.json')
   const own = config ? (JSON.parse(config).own ?? []) : []
-  const files = templateFiles()
-  const rows = compare({ files, readTemplate: read(TEMPLATE), readProject: read(target), own })
+  // The template's files, then those of each adopted module, each read from where it lives.
+  const sources = [{ root: TEMPLATE, files: templateFiles() }]
+  for (const module of adoptedModules(read(target))) {
+    const root = join(MODULES, module.name, 'files')
+    sources.push({ root, files: templateFiles(root).filter((file) => !sources[0].files.some((known) => known.to === file.to)) })
+  }
+  const files = sources.flatMap((source) => source.files.map((file) => ({ ...file, root: source.root })))
+  const rows = files.flatMap((file) => compare({ files: [file], readTemplate: read(file.root), readProject: read(target), own }))
   const todo = needsAction(rows)
 
   for (const row of rows) if (row.state !== 'same' && row.state !== 'project-owned') process.stdout.write(`${row.state}: ${row.path}\n`)
@@ -63,11 +86,11 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   if (process.argv.includes('--apply')) {
     for (const row of todo) {
       // A file the project owns is created when missing, as at kickoff, but with its placeholders: fill them.
-      const { from } = files.find((file) => file.to === row.path)
+      const { from, root } = files.find((file) => file.to === row.path)
       const destination = join(target, row.path)
       mkdirSync(dirname(destination), { recursive: true })
-      copyFileSync(join(TEMPLATE, from), destination)
-      chmodSync(destination, statSync(join(TEMPLATE, from)).mode)
+      copyFileSync(join(root, from), destination)
+      chmodSync(destination, statSync(join(root, from)).mode)
     }
     process.stdout.write(`${todo.length} file(s) written. Read \`git diff\`, run \`node scripts/verify.mjs --full\`, and open a pull request: tooling is tier 2.\n`)
     process.exit(0)

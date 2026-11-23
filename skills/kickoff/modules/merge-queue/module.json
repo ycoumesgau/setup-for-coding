@@ -1,7 +1,7 @@
 {
   "name": "merge-queue",
   "trigger": "A merge to the default branch deploys to production, pull requests arrive faster than the full level runs, and the hosting platform offers a merge queue for this repository.",
-  "adds": "CI runs the fast level on a pull request and the full level once, in the queue, on the change combined with everything merged before it.",
+  "adds": "CI runs the fast level on a pull request and the full level once, in the queue, on the change combined with everything merged before it. Nothing runs after the merge.",
   "limits": [
     "The queue must be enabled in the repository's branch protection, with Verify as the required check: this module only provides the workflow.",
     "Availability depends on the hosting plan and on who owns the repository; check it before relying on it.",

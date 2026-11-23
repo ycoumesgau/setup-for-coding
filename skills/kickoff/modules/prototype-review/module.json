@@ -1,0 +1,10 @@
+{
+  "name": "prototype-review",
+  "trigger": "The first screen that a prototype or a design file draws: from then on, a screen as built is compared with the screen as designed.",
+  "adds": "A third fresh-context reviewer, read-only, that compares captures of a screen with the renders of its design, frame by frame and block by block.",
+  "limits": [
+    "It needs the session to give it captures, design renders and the table that pairs each route with its frame: without the table it refuses to guess.",
+    "It reads images; it does not measure pixels and cannot check a behaviour that is not shown.",
+    "A reviewer laid during a session is not registered in that session: run it from the next one, or give its file to a fresh agent as its instructions."
+  ]
+}

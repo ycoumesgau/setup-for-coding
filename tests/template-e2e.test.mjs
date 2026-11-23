@@ -47,7 +47,6 @@ test('the project receives its contract, its checks, its reviewers and its CI', 
     '.claude/settings.json',
     '.claude/agents/reviewer-conformity.md',
     '.claude/agents/reviewer-risk.md',
-    '.claude/agents/reviewer-prototype.md',
     '.githooks/pre-push',
     '.github/workflows/ci.yml',
     '.github/pull_request_template.md',
@@ -162,23 +161,37 @@ test('the settings wire each hook to a script the project received', () => {
   }
 })
 
-test('the project CI runs the full level of the same command, and nothing else', () => {
-  const runs = read('.github/workflows/ci.yml')
+test('the project CI runs the same command as a session, one job per group, before the merge', () => {
+  const ci = read('.github/workflows/ci.yml')
+  const runs = ci
     .split('\n')
     .map((line) => line.trim())
-    .filter((line) => line.startsWith('- run:'))
-  assert.deepEqual(runs, ['- run: node scripts/verify.mjs --full'])
+    .filter((line) => /^(- )?run: \S/.test(line))
+  assert.deepEqual(runs, [
+    'run: echo "list=$(node scripts/verify.mjs --full --list-groups)" >> "$GITHUB_OUTPUT"',
+    '- run: node scripts/verify.mjs --full --group "$GROUP"',
+    '- run: test "$RESULT" = success',
+  ])
+  // What the matrix reads is what the script prints, and each entry is a group the script accepts.
+  const groups = JSON.parse(node(['scripts/verify.mjs', '--full', '--list-groups']).stdout)
+  assert.deepEqual(groups, ['main'])
+  finishKickoff()
+  assert.equal(node(['scripts/verify.mjs', '--full', '--group', 'main']).status, 0)
+  const unknown = node(['scripts/verify.mjs', '--full', '--group', 'nowhere'])
+  assert.equal(unknown.status, 1)
+  assert.match(unknown.stderr, /no step of the full level is in group "nowhere"/)
+
   assert.match(read('.githooks/pre-push'), /^node scripts\/verify\.mjs \|\| exit 1$/m)
   // The overlap map informs; it must never be what stops a push.
   assert.match(read('.githooks/pre-push'), /^node scripts\/overlap\.mjs 2>\/dev\/null \|\| true$/m)
 })
 
-test('each reviewer declares its tools, and only the risk reviewer may execute', () => {
+test('a project starts with two reviewers; only the risk reviewer may execute', () => {
   const tools = (name) => read(`.claude/agents/${name}.md`).match(/^tools: (.+)$/m)[1]
   assert.equal(tools('reviewer-conformity'), 'Read, Grep, Glob')
-  assert.equal(tools('reviewer-prototype'), 'Read, Grep, Glob')
   assert.equal(tools('reviewer-risk'), 'Read, Grep, Glob, Bash')
   assert.match(read('.claude/agents/reviewer-risk.md'), /^disallowedTools: WebFetch, WebSearch$/m)
+  assert.throws(() => read('.claude/agents/reviewer-prototype.md'), /ENOENT/, 'the prototype reviewer joins on its trigger, not on day one')
 })
 
 test('the tier of a change is computed in the project, from what its branch touched', () => {
@@ -210,7 +223,9 @@ test('the tier of a change is computed in the project, from what its branch touc
   assert.match(node(['scripts/risk-tier.mjs', '--base', 'main']).stdout, /^risk tier 2: [\s\S]*set by: scripts\/verify\.mjs/)
 
   const piped = node(['scripts/risk-tier.mjs', '--stdin', '--json'], { input: 'docs/a.md\nAGENTS.md\n' })
-  assert.deepEqual(JSON.parse(piped.stdout), { tier: 2, setBy: ['AGENTS.md'], files: 2 })
+  assert.deepEqual(JSON.parse(piped.stdout), { tier: 2, setBy: ['AGENTS.md'], secondPass: [], files: 2 })
+  const sensitive = node(['scripts/risk-tier.mjs', '--stdin'], { input: 'apps/api/src/auth/session.ts\n' })
+  assert.match(sensitive.stdout, /second review pass, by someone who did not write it: apps\/api\/src\/auth\/session\.ts/)
   sh('git', ['checkout', '--quiet', 'main'])
 })
 
@@ -218,13 +233,14 @@ test('a kickoff with modules lays their files first and wires their checks', () 
   const other = mkdtempSync(join(tmpdir(), 'kickoff-modules-'))
   try {
     spawnSync('git', ['init', '--quiet', '--initial-branch=main'], { cwd: other })
-    const { written } = kickoff({ target: other, values: { PROJECT_NAME: 'Orchard' }, chosen: ['merge-queue', 'dated-exceptions'] })
+    const { written } = kickoff({ target: other, values: { PROJECT_NAME: 'Orchard' }, chosen: ['merge-queue', 'dated-exceptions', 'prototype-review'] })
     const at = (path) => readFileSync(join(other, path), 'utf8')
 
     assert.equal(written.filter((path) => path === '.github/workflows/ci.yml').length, 1, 'ci.yml laid twice')
     assert.match(at('.github/workflows/ci.yml'), /^\s+merge_group:$/m)
-    assert.match(at('.github/workflows/ci.yml'), /github\.event_name != 'pull_request' && '--full' \|\| ''/)
+    assert.match(at('.github/workflows/ci.yml'), /LEVEL: \$\{\{ github\.event_name == 'merge_group' && '--full' \|\| '' \}\}/)
     assert.deepEqual(JSON.parse(at('verify.config.json')).fast.map((step) => step.name), ['agent memory', 'dated exceptions'])
+    assert.match(at('.claude/agents/reviewer-prototype.md'), /^tools: Read, Grep, Glob$/m)
 
     writeFileSync(join(other, 'AGENTS.md'), at('AGENTS.md').replaceAll('TODO(kickoff)', 'Decided at kickoff'))
     const run = (args) => spawnSync(process.execPath, args, { cwd: other, encoding: 'utf8' })
@@ -241,16 +257,56 @@ test('a kickoff with modules lays their files first and wires their checks', () 
   assert.throws(() => kickoff({ target: project, values: { PROJECT_NAME: 'x' }, chosen: ['time-travel'] }), /unknown module\(s\): time-travel/)
 })
 
-test('a module workflow that writes to the repository says why, and reads pull request text as data', () => {
-  const workflow = (name, file) => readFileSync(new URL(`../skills/kickoff/modules/${name}/files/dot-github/workflows/${file}`, import.meta.url), 'utf8')
-  const auto = workflow('auto-merge', 'auto-merge.yml')
-  assert.match(auto, /ref: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/, 'the tier must be computed with the base branch rules')
-  assert.doesNotMatch(auto, /pull_request_target/)
-  const digest = workflow('weekly-digest', 'weekly-digest.yml')
+const moduleWorkflow = (name, file) =>
+  readFileSync(new URL(`../skills/kickoff/modules/${name}/files/dot-github/workflows/${file}`, import.meta.url), 'utf8')
+
+test('the auto-merge workflow is the base branch\'s, checks out nothing of the pull request, and reads its text as data', () => {
+  const auto = moduleWorkflow('auto-merge', 'auto-merge.yml')
+  assert.match(auto, /^  pull_request_target:$/m, 'a pull request must not be able to rewrite the workflow that merges it')
+  assert.match(auto, /ref: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/)
+  assert.match(auto, /persist-credentials: false/)
+  assert.doesNotMatch(auto, /pull_request\.head\.(ref|repo)/, 'nothing of the pull request is checked out')
+  assert.match(auto, /pulls\/\$\{PR_NUMBER\}\/files/)
+  assert.match(auto, /previous_filename/, 'the old name of a renamed file must count')
+  const digest = moduleWorkflow('weekly-digest', 'weekly-digest.yml')
   assert.match(digest, /--body-file digest\.md/)
   for (const text of [auto, digest]) {
-    // Titles and bodies never reach a shell line: only through files or environment variables.
-    assert.doesNotMatch(text, /run:[^\n]*\$\{\{ *github\.event\.pull_request\.(title|body)/)
-    assert.doesNotMatch(text, /\$\{\{ *github\.event\.pull_request\.(title|body) *\}\}/)
+    assert.doesNotMatch(text, /\$\{\{ *github\.event\.pull_request\.(title|body|head\.ref) *\}\}/)
+    // Inside a run block, nothing is interpolated by the workflow engine: values arrive through `env`.
+    for (const block of text.split(/\n\s+- run: \|\n/).slice(1)) assert.doesNotMatch(block.split(/\n\s{0,6}\S/)[0], /\$\{\{/)
+  }
+})
+
+test('the auto-merge decision, run for real: content arms it, anything else disarms it', () => {
+  const auto = moduleWorkflow('auto-merge', 'auto-merge.yml')
+  const lines = auto.slice(auto.indexOf('      - run: |\n') + '      - run: |\n'.length).split('\n')
+  const script = lines.filter((line) => line.startsWith('          ') || line.trim() === '').map((line) => line.slice(10)).join('\n')
+
+  const bin = mkdtempSync(join(tmpdir(), 'auto-merge-bin-'))
+  const calls = join(bin, 'calls.log')
+  // A stand-in for the hosting platform's command line: it answers the files request from
+  // FILES and records every other call.
+  writeFileSync(
+    join(bin, 'gh'),
+    ['#!/usr/bin/env bash', 'if [ "$1" = api ]; then printf "%s" "$FILES"; else printf "%s\\n" "$*" >> "$CALLS"; fi', ''].join('\n'),
+  )
+  spawnSync('chmod', ['+x', join(bin, 'gh')])
+  const decide = (files) => {
+    writeFileSync(calls, '')
+    const result = spawnSync('bash', ['-c', script], {
+      cwd: project,
+      encoding: 'utf8',
+      env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, CALLS: calls, FILES: files, GH_REPO: 'o/r', PR_NUMBER: '7', PR_URL: 'https://example.com/pull/7', HEAD_SHA: 'abc123' },
+    })
+    assert.equal(result.status, 0, result.stderr)
+    return readFileSync(calls, 'utf8').trim()
+  }
+  try {
+    assert.equal(decide('docs/a.md\nREADME.md\n'), 'pr merge https://example.com/pull/7 --auto --squash --match-head-commit abc123')
+    for (const files of ['docs/a.md\nsrc/total.ts\n', 'docs/a.md\nscripts/verify.mjs\n', 'docs/settings.json\n.claude/settings.json\n', 'apps/api/AGENTS.md\n', '']) {
+      assert.equal(decide(files), 'pr merge https://example.com/pull/7 --disable-auto', `armed on: ${JSON.stringify(files)}`)
+    }
+  } finally {
+    rmSync(bin, { recursive: true, force: true })
   }
 })

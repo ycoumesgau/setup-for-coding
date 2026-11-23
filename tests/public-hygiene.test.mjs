@@ -17,6 +17,14 @@ test('a path outside the repository is reported', () => {
   assert.deepEqual(rulesOf(check(join('See ', '/mnt', '/project-files/brief.md'))), ['private-path'])
   assert.deepEqual(rulesOf(check(join('cd ', '/home', '/someone/work'))), ['private-path'])
   assert.deepEqual(rulesOf(check(join('open ', '/Users', '/someone/Desktop/a.txt'))), ['private-path'])
+  assert.deepEqual(rulesOf(check(join('cd ', '/home', '/Someone/work'))), ['private-path'])
+  assert.deepEqual(rulesOf(check(join('cat ', '/root', '/.config/tool/README.md'))), ['private-path'])
+  assert.deepEqual(rulesOf(check(join('ls ', '~', '/code/acme/src'))), ['private-path'])
+  assert.deepEqual(rulesOf(check(join('see ', '/tmp', '/claude-0/work/scratchpad/notes.md'))), ['private-path'])
+})
+
+test('a tilde that is not a home directory is left alone', () => {
+  assert.deepEqual(check('Versions like ~1.2 or a range a~/b are not paths; nor is docs/~/x.'), [])
 })
 
 test('a repository-relative path is not a private path', () => {
@@ -26,6 +34,7 @@ test('a repository-relative path is not a private path', () => {
 test('a session link is reported', () => {
   const link = join('https://claude.ai', '/code/session_', '01AbCdEfGhIjKlMn')
   assert.deepEqual(rulesOf(check(`Claude-Session: ${link}`)), ['session-link'])
+  assert.deepEqual(rulesOf(check(join('https://claude.ai', '/code/artifact/', 'abc-123'))), ['session-link'])
 })
 
 test('an e-mail address is reported, a placeholder is not', () => {
@@ -41,6 +50,10 @@ test('strings shaped like credentials are reported', () => {
     join('AK', 'IA', 'ABCDEFGHIJKLMNOP'),
     join('-----BEGIN RSA ', 'PRIVATE KEY-----'),
     join('ey', 'J', 'a'.repeat(12), '.', 'b'.repeat(12), '.', 'c'.repeat(12)),
+    join('sk', '_live_', 'a1b2c3d4e5f6'),
+    join('rk', '_test_', 'a1b2c3d4e5f6'),
+    join('AI', 'za', 'B'.repeat(24)),
+    join('sk-', 'proj-', 'abcdefgh1234'),
   ]
   for (const sample of samples) {
     assert.deepEqual(rulesOf(check(`token = ${sample}`)), ['credential'], sample.slice(0, 6))

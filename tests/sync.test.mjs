@@ -6,8 +6,8 @@ import { dirname, join } from 'node:path'
 import { after, before, test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 
-import { lay } from '../skills/kickoff/init.mjs'
-import { compare, isManaged, needsAction } from '../skills/sync/sync.mjs'
+import { kickoff, lay } from '../skills/kickoff/init.mjs'
+import { adoptedModules, compare, isManaged, needsAction } from '../skills/sync/sync.mjs'
 
 const script = join(dirname(fileURLToPath(import.meta.url)), '..', 'skills/sync/sync.mjs')
 let project
@@ -21,7 +21,7 @@ before(() => {
 after(() => rmSync(project, { recursive: true, force: true }))
 
 test('the contract and the verification steps belong to the project; the checks do not', () => {
-  for (const path of ['AGENTS.md', 'verify.config.json', 'risk-tiers.json', '.github/workflows/ci.yml']) assert.equal(isManaged(path), false, path)
+  for (const path of ['AGENTS.md', 'verify.config.json', 'risk-tiers.json', '.github/workflows/ci.yml', 'docs/adr/README.md', 'exceptions.json']) assert.equal(isManaged(path), false, path)
   for (const path of ['scripts/verify.mjs', 'scripts/agent-memory-check.mjs', '.claude/agents/reviewer-risk.md', '.githooks/pre-push']) assert.equal(isManaged(path), true, path)
 })
 
@@ -86,4 +86,29 @@ test('a directory that is not a project started with the kickoff is refused', ()
   const result = spawnSync(process.execPath, [script, '--target', empty], { encoding: 'utf8' })
   assert.equal(result.status, 2)
   rmSync(empty, { recursive: true, force: true })
+})
+
+test('the files of an adopted module are compared too; a module the project never took is not', () => {
+  const withModules = mkdtempSync(join(tmpdir(), 'sync-modules-'))
+  try {
+    spawnSync('git', ['init', '--quiet'], { cwd: withModules })
+    kickoff({ target: withModules, values: { PROJECT_NAME: 'Orchard' }, chosen: ['dated-exceptions', 'prototype-review'] })
+    const read = (path) => { try { return readFileSync(join(withModules, path), 'utf8') } catch { return null } }
+    assert.deepEqual(adoptedModules(read).map((module) => module.name), ['dated-exceptions', 'prototype-review'])
+
+    const run = (...args) => spawnSync(process.execPath, [script, '--target', withModules, ...args], { encoding: 'utf8' })
+    assert.equal(run().status, 0, run().stdout)
+    appendFileSync(join(withModules, 'scripts/exceptions-check.mjs'), '\n// loosened\n')
+    unlinkSync(join(withModules, '.claude/agents/reviewer-prototype.md'))
+    writeFileSync(join(withModules, 'exceptions.json'), '[{"rule":"x","reason":"y","owner":"z","expires":"2099-01-01","removal":"w"}]')
+    const report = run()
+    assert.equal(report.status, 1)
+    assert.match(report.stdout, /differs: scripts\/exceptions-check\.mjs/)
+    assert.doesNotMatch(report.stdout, /exceptions\.json/, 'the list of exceptions is the project\'s')
+    assert.doesNotMatch(report.stdout, /weekly-digest|auto-merge/)
+    run('--apply')
+    assert.doesNotMatch(readFileSync(join(withModules, 'scripts/exceptions-check.mjs'), 'utf8'), /loosened/)
+  } finally {
+    rmSync(withModules, { recursive: true, force: true })
+  }
 })

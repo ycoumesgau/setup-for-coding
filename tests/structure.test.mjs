@@ -88,10 +88,26 @@ test('no workflow runs on a moving image label', () => {
   }
 })
 
-test('a run on the default branch or in a merge queue is never cancelled by the next one', () => {
+test('nothing is verified after the merge: no CI runs on a push to the default branch', () => {
   for (const path of workflows.slice(0, 3)) {
-    assert.match(text(path), /cancel-in-progress: \$\{\{ github\.event_name == 'pull_request' \}\}/, path)
-    assert.doesNotMatch(text(path), /cancel-in-progress: true/, path)
+    const triggers = text(path).split('\njobs:')[0]
+    assert.doesNotMatch(triggers, /^\s+push:/m, `${path} runs after the merge`)
+    assert.match(triggers, /^\s+pull_request:/m, path)
+  }
+})
+
+test('in a merge queue, an entry is never cancelled by the next one', () => {
+  const queue = text(workflows[2])
+  assert.match(queue, /^\s+merge_group:$/m)
+  assert.match(queue, /cancel-in-progress: \$\{\{ github\.event_name == 'pull_request' \}\}/)
+})
+
+test('the required check always runs: skipped, it would count as passed', () => {
+  for (const path of workflows.slice(1, 3)) {
+    const verify = text(path).split('\n  verify:\n')[1]
+    assert.match(verify, /^    name: Verify$/m, path)
+    assert.match(verify, /^    if: always\(\)$/m, path)
+    assert.match(verify, /test "\$RESULT" = success/, path)
   }
 })
 

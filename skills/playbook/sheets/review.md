@@ -45,10 +45,11 @@ it suspects.
 
 ## Default
 
-`reviewer-conformity` on every lot, `reviewer-risk` on every lot that touches code, schema,
-scripts or CI, `reviewer-prototype` once screens have a design to compare against. One pass
-by the writing session; the second pass at fresh context for tier-2 lots, run by whoever
-merges. Two rounds at most. The reason: the strongest finds of review are checks that stay
+Two reviewers from day one: `reviewer-conformity` on every lot, `reviewer-risk` on every lot
+that touches code, schema, scripts or CI. A third, `reviewer-prototype`, joins with the first
+screen that has a design to compare against. One pass by the writing session; a second pass at
+fresh context, run by whoever merges, only for a lot that touches authentication, tenancy,
+billing or a migration. Two rounds at most. The reason: the strongest finds of review are checks that stay
 green when the code they guard is broken, and only execution proves that. The default stops
 fitting when lots are very large (one of about 15,000 lines needed three risk reviewers in
 parallel): split the lot rather than add reviewers.
@@ -87,7 +88,8 @@ parallel): split the lot rather than add reviewers.
   Glob. `reviewer-risk.md` adds Bash with web tools disallowed, must replay one mutation in a
   `git worktree` and report an unexpected green as blocking. All three refuse the session's
   story and stop at two rounds.
-- `scripts/risk-tier.mjs` decides which lots get the second pass (tier 2).
+- `scripts/risk-tier.mjs` names the files that call for the second pass: the rules marked
+  `secondPass` in `risk-tiers.json`.
 - The pull request template asks for the mutations seen red and the reviewers that ran.
 - Not enforced: that a review actually ran. The body says so; the auto-merge module states
   that it does not know, and the owner samples.

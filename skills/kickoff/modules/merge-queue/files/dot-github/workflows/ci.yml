@@ -1,32 +1,69 @@
 name: CI
 
+# A pull request gets the fast level; the merge queue gets everything, once, on the change
+# combined with what was merged before it. Nothing runs after the merge.
 on:
   pull_request:
   merge_group:
-  push:
-    branches: [main]
 
 permissions:
   contents: read
 
-# A newer push replaces the run of an older one on a pull request only: on the default
-# branch and in a merge queue every commit keeps its own verdict.
+# A newer push replaces the run of an older one on a pull request only: in the queue every
+# entry keeps its own verdict.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+env:
+  LEVEL: ${{ github.event_name == 'merge_group' && '--full' || '' }}
+
 jobs:
-  verify:
-    # The one check to require on the default branch, and in the merge queue.
-    name: Verify
+  groups:
+    name: Groups
     # A named image, not a moving label: the day "latest" changes, every job changes with it.
     runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      list: ${{ steps.list.outputs.list }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - id: list
+        run: echo "list=$(node scripts/verify.mjs $LEVEL --list-groups)" >> "$GITHUB_OUTPUT"
+
+  run:
+    # One job per group of `verify.config.json`, side by side.
+    name: ${{ matrix.group }}
+    needs: groups
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        group: ${{ fromJson(needs.groups.outputs.list) }}
+    env:
+      GROUP: ${{ matrix.group }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       # Kickoff: install the project's toolchain and dependencies here, pinned.
-      # A pull request gets the fast level; the queue and the default branch get everything.
-      - run: node scripts/verify.mjs ${{ github.event_name != 'pull_request' && '--full' || '' }}
+      # Unquoted on purpose: an empty level must add no argument.
+      - run: node scripts/verify.mjs $LEVEL --group "$GROUP"
+
+  verify:
+    # The one check to require on the default branch and in the merge queue. It always runs: a required check that
+    # is skipped counts as passed.
+    name: Verify
+    if: always()
+    needs: run
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      RESULT: ${{ needs.run.result }}
+    steps:
+      - run: test "$RESULT" = success

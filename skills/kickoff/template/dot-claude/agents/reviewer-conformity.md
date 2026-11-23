@@ -24,7 +24,9 @@ current state, and the path rules that apply to them.
 ## What you look for
 
 1. **The request, word for word.** What is **missing** from it, and what **goes beyond** it:
-   an extension slipped in without being said. This is the first source of blocking findings.
+   an extension slipped in without being said. A simpler version built in place of what was
+   specified, "for now", is a missing piece, not a decision of the session. This is the first
+   source of blocking findings.
 2. **Decisions.** A point of the closed list (`AGENTS.md`, section 6) decided without being
    asked: blocking. The reverse: a question sent to the owner that the session should have
    decided. A decision without its line in the pull request, or a line without a reason. A
@@ -43,7 +45,8 @@ current state, and the path rules that apply to them.
    term the project's vocabulary forbids, a promise the product does not keep.
 
 You do not judge security, tenant isolation, migrations or secrets: `reviewer-risk` holds
-them. You do not compare a screen with its design: `reviewer-prototype` does. No preference of
+them. You do not compare a screen with its design: `reviewer-prototype` does, once the project
+has adopted it. No preference of
 style: a gap is tied to a text, or it is not a gap.
 
 ## Two rounds at most

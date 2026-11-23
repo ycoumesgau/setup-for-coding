@@ -27,7 +27,7 @@
  */
 import { spawnSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
-import { join } from 'node:path'
+import { isAbsolute, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 /** Branches sharing at least one file with `mine`, the most entangled first. */
@@ -74,6 +74,15 @@ const run = (cwd, args) => {
   return { ok: result.status === 0, out: (result.stdout ?? '').trim(), err: (result.stderr ?? '').trim() }
 }
 
+/**
+ * A trailer is text written by whoever pushed the branch, and it ends up in another session's
+ * output. Only a plain https link is passed on; anything else is dropped.
+ */
+export const sessionLink = (trailer) => {
+  const first = (trailer ?? '').trim().split(/\s/u)[0] ?? ''
+  return /^https:\/\/[A-Za-z0-9.-]+\/[A-Za-z0-9._~\/-]{1,200}$/.test(first) ? first : ''
+}
+
 /** A bare repository under `.git/`, pointed at the same remote, fetched with a filter. */
 const cacheRepo = (root, gitDir, name, url, filter) => {
   const path = join(gitDir, name)
@@ -98,8 +107,10 @@ const cacheRepo = (root, gitDir, name, url, filter) => {
  */
 export const liveBranches = ({ root, base, days, now, skip = [] }) => {
   const gitDir = run(root, ['rev-parse', '--absolute-git-dir']).out
-  const url = run(root, ['remote', 'get-url', 'origin']).out
-  if (!url) return { error: 'no "origin" remote: there is nobody to overlap with.' }
+  const remote = run(root, ['remote', 'get-url', 'origin']).out
+  if (!remote) return { error: 'no "origin" remote: there is nobody to overlap with.' }
+  // A remote given as a relative path means something else from inside the cache.
+  const url = /^[a-z+]+:\/\/|^[\w.-]+@[\w.-]+:/i.test(remote) || isAbsolute(remote) ? remote : resolve(root, remote)
 
   const tipsRepo = cacheRepo(root, gitDir, 'overlap-tips.git', url, 'tree:0')
   const tips = run(tipsRepo, ['fetch', '--quiet', '--prune', '--depth=1', '--filter=tree:0', 'origin', '+refs/heads/*:refs/tips/*'])
@@ -111,7 +122,7 @@ export const liveBranches = ({ root, base, days, now, skip = [] }) => {
     .filter(Boolean)
     .map((line) => {
       const [ref, time, session] = line.split('\t')
-      return { name: ref.replace('refs/tips/', ''), time: Number(time), session: (session ?? '').trim().split(' ')[0] }
+      return { name: ref.replace('refs/tips/', ''), time: Number(time), session: sessionLink(session) }
     })
   const recent = refs.filter((ref) => ref.time > since && ref.name !== base && !skip.includes(ref.name))
   if (recent.length === 0) return { branches: [] }

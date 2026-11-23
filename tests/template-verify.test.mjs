@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { configProblems, execute, report, stepsFor } from '../skills/kickoff/template/scripts/verify.mjs'
+import { configProblems, execute, groupsFor, report, stepsFor, stepsOfGroup } from '../skills/kickoff/template/scripts/verify.mjs'
 
 const config = {
   fast: [
@@ -58,4 +58,32 @@ test('a fast level over its budget says so; the full level has no budget', () =>
   assert.ok(fast.lines.some((line) => /over its 300s budget/.test(line)))
   const full = report(execute(stepsFor(config, 'full'), slow, now), { level: 'full', config })
   assert.ok(!full.lines.some((line) => /budget/.test(line)))
+})
+
+const grouped = {
+  fast: [
+    { name: 'memory', run: 'a' },
+    { name: 'api lint', run: 'b', group: 'api' },
+  ],
+  full: [
+    { name: 'api database', run: 'c', group: 'api' },
+    { name: 'web browser', run: 'd', group: 'web' },
+  ],
+}
+
+test('steps fall into groups, and a step with no group has one too', () => {
+  assert.deepEqual(groupsFor(grouped, 'fast'), ['main', 'api'])
+  assert.deepEqual(groupsFor(grouped, 'full'), ['main', 'api', 'web'])
+  assert.deepEqual(groupsFor(config, 'full'), ['main'])
+})
+
+test('the groups of a level cover every step once: run side by side, nothing is lost', () => {
+  const all = groupsFor(grouped, 'full').flatMap((group) => stepsOfGroup(grouped, 'full', group).map((step) => step.name))
+  assert.deepEqual([...all].sort(), stepsFor(grouped, 'full').map((step) => step.name).sort())
+  assert.deepEqual(stepsOfGroup(grouped, 'full', 'api').map((step) => step.name), ['api lint', 'api database'])
+})
+
+test('a group nobody declared is refused: a renamed group must not run nothing and pass', () => {
+  assert.throws(() => stepsOfGroup(grouped, 'full', 'mobile'), /no step of the full level is in group "mobile"/)
+  assert.throws(() => stepsOfGroup(grouped, 'fast', 'web'), /no step of the fast level is in group "web"/)
 })

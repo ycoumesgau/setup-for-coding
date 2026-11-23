@@ -3,9 +3,12 @@ import { test } from 'node:test'
 
 import {
   DEFAULTS,
+  configProblems,
+  departures,
   globToRegExp,
   isCovered,
   memoryProblems,
+  mergeConfig,
   stateLines,
 } from '../skills/kickoff/template/scripts/agent-memory-check.mjs'
 
@@ -83,6 +86,30 @@ test('CLAUDE.md holds the import and nothing else', () => {
   ])
   one(found, 'must hold the single line "@AGENTS.md"')
   one(memoryProblems([{ path: 'AGENTS.md', text: contract() }, { path: 'apps/api/CLAUDE.md', text: '@AGENTS.md' }]), 'which does not exist')
+})
+
+test('a contract nested in an app is capped and kept free of stories, like the root one', () => {
+  const nested = (text) => problems({ path: 'AGENTS.md', text: contract() }, { path: 'apps/api/AGENTS.md', text }, { path: 'apps/api/CLAUDE.md', text: '@AGENTS.md\n' })
+  assert.deepEqual(nested('# API rules\n\n- Amounts are integer cents.\n'), [])
+  one(nested('z'.repeat(9_000)), 'apps/api/AGENTS.md is 9000 bytes, over its 8000-byte cap')
+  one(nested('- 2026-03-04: the session rebuilt the importer.\n'), 'apps/api/AGENTS.md holds a dated journal line')
+  assert.equal(isCovered('apps/api/AGENTS.md'), true)
+})
+
+test('a configuration cannot switch the check off, and every loosened value is said aloud', () => {
+  const loose = mergeConfig({ caps: [{ files: 'AGENTS.md', maxBytes: 1_000_000 }], loaded: [], placeholder: '', state: { maxLines: 100_000 } })
+  const refused = configProblems(loose).join(' ')
+  assert.match(refused, /"loaded" must keep AGENTS\.md/)
+  assert.match(refused, /"placeholder" may not be emptied/)
+  assert.match(configProblems(mergeConfig({ caps: [{ files: 'docs/**/*.md', maxBytes: 10 }] })).join(' '), /must keep a cap on AGENTS\.md/)
+
+  assert.deepEqual(configProblems(DEFAULTS), [])
+  assert.deepEqual(departures(DEFAULTS), [])
+  const said = departures(mergeConfig({ caps: [{ files: 'AGENTS.md', maxBytes: 40_000 }], state: { heading: '## 0. État courant', maxLines: 40 } })).join(' | ')
+  assert.match(said, /cap on AGENTS\.md: 40000 bytes \(default 16000\)/)
+  assert.match(said, /no cap on docs\/adr\/\*\.md/)
+  assert.match(said, /state section: 40 lines \(default 25\)/)
+  assert.match(said, /state heading: "## 0\. État courant"/)
 })
 
 test('a repository without a contract is refused', () => {

@@ -31,6 +31,7 @@ export const DEFAULTS = {
   /** First match wins: list the specific pattern before the general one. */
   caps: [
     { files: 'AGENTS.md', maxBytes: 16_000 },
+    { files: '**/AGENTS.md', maxBytes: 8_000 },
     { files: '.claude/rules/**/*.md', maxBytes: 8_000 },
     { files: 'docs/plans/active/*/STATE.md', maxBytes: 6_000 },
     { files: 'docs/plans/**/*.md', maxBytes: 24_000 },
@@ -39,7 +40,7 @@ export const DEFAULTS = {
   ],
   state: { file: 'AGENTS.md', heading: '## 0. Current state', maxLines: 25 },
   /** Files loaded into an agent's context: they hold rules, never a story. */
-  loaded: ['AGENTS.md', '.claude/rules/**/*.md'],
+  loaded: ['AGENTS.md', '**/AGENTS.md', '.claude/rules/**/*.md'],
   placeholder: 'TODO(kickoff)',
 }
 
@@ -82,7 +83,7 @@ const dir = (path) => (path.includes('/') ? path.slice(0, path.lastIndexOf('/'))
 
 /** Every path the check has an opinion on. */
 export const isCovered = (path, config = DEFAULTS) =>
-  base(path) === 'CLAUDE.md' || config.caps.some((cap) => matches(path, cap.files))
+  base(path) === 'CLAUDE.md' || base(path) === 'AGENTS.md' || config.caps.some((cap) => matches(path, cap.files))
 
 /** Lines of the state section that are not blank, or `null` when the section is missing. */
 export const stateLines = (text, heading) => {
@@ -148,12 +149,46 @@ export const memoryProblems = (files, config = DEFAULTS) => {
   return problems
 }
 
-/** The repository's settings merged over the defaults; a list given in the file replaces ours. */
+/**
+ * A project may set its own values in `agent-memory.config.json`, for example
+ * `{ "state": { "heading": "## 0. État courant" } }` when its contract is not in English.
+ * A list given there replaces ours. What it may not do is switch the check off.
+ */
+export const mergeConfig = (own = {}) => ({ ...DEFAULTS, ...own, state: { ...DEFAULTS.state, ...own.state } })
+
+export const configProblems = (config) => {
+  const problems = []
+  if (!Array.isArray(config.loaded) || !config.loaded.includes('AGENTS.md')) {
+    problems.push('agent-memory.config.json: "loaded" must keep AGENTS.md, or stories are no longer refused in the contract.')
+  }
+  if (!Array.isArray(config.caps) || !config.caps.some((cap) => cap.files === 'AGENTS.md')) {
+    problems.push('agent-memory.config.json: "caps" must keep a cap on AGENTS.md.')
+  }
+  if (!config.placeholder) problems.push('agent-memory.config.json: "placeholder" may not be emptied.')
+  return problems
+}
+
+/** Every value that departs from the defaults, so that a loosened check is visible each time it runs. */
+export const departures = (config) => {
+  const lines = []
+  for (const cap of config.caps ?? []) {
+    const ours = DEFAULTS.caps.find((candidate) => candidate.files === cap.files)
+    if (!ours) lines.push(`cap on ${cap.files}: ${cap.maxBytes} bytes (not in the defaults)`)
+    else if (ours.maxBytes !== cap.maxBytes) lines.push(`cap on ${cap.files}: ${cap.maxBytes} bytes (default ${ours.maxBytes})`)
+  }
+  for (const ours of DEFAULTS.caps) {
+    if (!(config.caps ?? []).some((cap) => cap.files === ours.files)) lines.push(`no cap on ${ours.files} (default ${ours.maxBytes} bytes)`)
+  }
+  if (config.state.maxLines !== DEFAULTS.state.maxLines) lines.push(`state section: ${config.state.maxLines} lines (default ${DEFAULTS.state.maxLines})`)
+  if (config.state.heading !== DEFAULTS.state.heading) lines.push(`state heading: "${config.state.heading}"`)
+  for (const glob of DEFAULTS.loaded) if (!config.loaded.includes(glob)) lines.push(`stories no longer refused in ${glob}`)
+  return lines
+}
+
 export const loadConfig = (root) => {
   const file = join(root, 'agent-memory.config.json')
   if (!existsSync(file)) return DEFAULTS
-  const own = JSON.parse(readFileSync(file, 'utf8'))
-  return { ...DEFAULTS, ...own, state: { ...DEFAULTS.state, ...own.state } }
+  return mergeConfig(JSON.parse(readFileSync(file, 'utf8')))
 }
 
 export const repositoryRoot = (cwd = process.cwd()) =>
@@ -181,7 +216,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     const target = input?.tool_input?.file_path ?? ''
     const path = target ? relative(root, target).replaceAll('\\', '/') : ''
     if (!path || path.startsWith('..') || !isCovered(path, config)) process.exit(0)
-    const problems = memoryProblems(coveredFiles(root, config), config)
+    const problems = [...configProblems(config), ...memoryProblems(coveredFiles(root, config), config)]
     if (problems.length > 0) {
       process.stdout.write(
         JSON.stringify({
@@ -194,7 +229,8 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   }
 
   const files = coveredFiles(root, config)
-  const problems = memoryProblems(files, config)
+  const problems = [...configProblems(config), ...memoryProblems(files, config)]
+  for (const line of departures(config)) process.stdout.write(`agent memory: this project changed a default: ${line}\n`)
   for (const problem of problems) process.stderr.write(`agent memory: ${problem}\n`)
   if (problems.length > 0) process.exit(1)
   process.stdout.write(`agent memory: ${files.length} file(s), nothing refused.\n`)

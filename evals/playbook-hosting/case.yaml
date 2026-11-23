@@ -1,0 +1,25 @@
+schema_version: "1.1"
+name: playbook-hosting
+description: A structural question is answered from the matching sheet, not from memory.
+tags: [playbook]
+runs: 1
+execution:
+  max_turns: 12
+  allowed_tools: [Read, Glob, Grep, Skill]
+  prompt: >
+    We are starting a product for businesses. Customer data must stay in the EU, and it calls
+    language models on customer documents. Before I write anything: where should it be
+    hosted, and where can the model calls run? Tell me what to decide and what your default is.
+graders:
+  - name: opened-the-hosting-sheet
+    type: tool_used
+    tool: Read
+    input_match: "stack-and-hosting"
+  - name: separates-data-from-inference
+    type: regex
+    pattern: "inference"
+    flags: i
+  - name: gives-a-default
+    type: regex
+    pattern: "default"
+    flags: i

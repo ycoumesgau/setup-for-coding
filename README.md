@@ -1,7 +1,7 @@
 # setup-for-coding
 
 A starting point for building software with coding agents: the working contract an agent
-loads in every session, the checks that keep that contract honest, three reviewers, and the
+loads in every session, the checks that keep that contract honest, fresh-context reviewers, and the
 knowledge needed to make the first decisions of a new product.
 
 It is a [Claude Code](https://code.claude.com/docs) plugin. A project is started with one
@@ -32,22 +32,31 @@ principles drawn from them.
 | Piece | What it does |
 | --- | --- |
 | `AGENTS.md` | The contract: state, product, stack, rules that each name their check, method, commands. Capped at 16 KB. |
-| `scripts/agent-memory-check.mjs` | Refuses a contract or a plan that outgrew its cap, a state that was extended instead of replaced, and a story where rules live. |
-| `scripts/verify.mjs` | One command with a fast and a full level, the same in a session and in CI. Each level says what it does not cover. |
+| `scripts/agent-memory-check.mjs` | Refuses a contract or a plan that outgrew its cap, a state section longer than its limit, and a story where rules live. |
+| `scripts/verify.mjs` | One command with a fast and a full level, the same in a session and in CI. Steps can be grouped: a session runs the groups in a row, CI side by side. Each level says what it does not cover. |
 | `scripts/overlap.mjs` | Who else is touching the files you changed, derived from pushed branches. No registry, no lock. |
-| `scripts/risk-tier.mjs` | The care a change needs, computed from the paths it touches: who reviews, who merges. |
-| `.claude/agents/` | Three fresh-context reviewers: conformity (read-only), risk (replays a mutation), prototype (compares a screen with its design). |
+| `scripts/risk-tier.mjs` | The care a change needs, computed from the paths it touches: who merges, and which files call for a second review pass. |
+| `.claude/agents/` | Two fresh-context reviewers: conformity (read-only) and risk (replays a mutation of its own). |
 | `.claude/settings.json`, `.githooks/` | The hooks that run the checks at write time and before a push, and refuse to skip them. |
-| `.github/` | CI that runs the same command and nothing else, a pull request template that asks what was not proved, two issue forms. |
+| `.github/` | CI that runs the same command and nothing else, before the merge and never after it; a pull request template that asks what was not proved; two issue forms. |
 | `docs/` | Decisions, plans and pitfalls as small files named by date, so that sessions never edit the same one. |
 
-Optional modules join a project when their written trigger is met: a merge queue, dated
-exceptions, a weekly digest of decisions, auto-merge of content-only changes.
+Optional modules join a project when their written trigger is met: a third reviewer that
+compares a screen with its design, a merge queue, dated exceptions, a weekly digest of
+decisions, auto-merge of content-only changes.
 
 ## Start a project
 
-1. Add this repository as a plugin marketplace in Claude Code and install the `setup` plugin
-   on your account (an account-level plugin is the one that loads in cloud sessions).
+1. Add this repository as a plugin marketplace in Claude Code and install the `setup`
+   plugin:
+
+   ```
+   /plugin marketplace add ycoumesgau/setup-for-coding
+   /plugin install setup@setup-for-coding
+   ```
+
+   For cloud sessions, install it on your account: a cloud session does not add the
+   marketplaces a repository lists.
 2. In an empty git repository, run:
 
    ```
@@ -85,7 +94,7 @@ The index is [skills/playbook/SKILL.md](skills/playbook/SKILL.md).
 This repository applies its own method:
 
 - Its contract is [AGENTS.md](AGENTS.md). Each rule names the check that enforces it.
-- `node scripts/verify.mjs` runs everything, in two seconds; CI runs that command and
+- `node scripts/verify.mjs` runs everything, in seconds; CI runs that command and
   nothing else. The checks it runs are the template's own scripts.
 - Every check has a test that feeds it the violation it exists to refuse, and the template
   is proved where it lands: a test lays it in a throwaway repository and breaks each rule
@@ -106,6 +115,8 @@ another's. The sheets say when a project should build such a thing for itself.
 
 - Loading through an account-level installation was not exercised for this plugin. Its
   manifests pass the official validator, and its skills load from a directory.
+- A kickoff was run from start to end by a real agent once, on one kind of product. The eval
+  cases under `evals/` are the way to run it again; they were not all run here.
 - The workflows of the optional modules were checked for their shape, not run on a real
   repository.
 - The sheets carry lived experience from a handful of projects by one person. They are a

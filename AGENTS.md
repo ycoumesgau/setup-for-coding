@@ -9,12 +9,15 @@ enforces says so.
 Replaced, never extended.
 
 - In place: the plugin manifest, this contract, the public-hygiene check, the project
-  template with its checks, reviewers and CI (`skills/kickoff/template/`), the overlap map,
-  the risk tiers and four optional modules (`skills/kickoff/modules/`).
+  template with its checks, two reviewers and CI (`skills/kickoff/template/`), the overlap
+  map, the risk tiers and five optional modules (`skills/kickoff/modules/`).
 - Skills: `kickoff` (start a project), `sync` (bring a project level with the template) and
   `playbook` (24 decision sheets in four groups, each under 8 KB, in one format).
 - The README and `docs/method.md` say why it is shaped this way and what is not proved.
-- Next: an eval suite that runs a kickoff with a real agent.
+- `evals/` holds three cases for `claude plugin eval`; `evals/README.md` says which were
+  seen passing and which were not.
+- Next: see the two kickoff cases pass under the eval harness, and run a kickoff on a
+  second kind of product.
 
 ## 1. What this is
 
@@ -51,10 +54,11 @@ The repository is public and meant to be read: what it says about agents, it app
    Check: the template's `agent-memory-check.mjs`, run here by `verify` and by the write hook.
 7. **Never bypass a check**: no `--no-verify`, no skipped test, no exemption added to make a
    push pass. An exemption is a line of code, reviewed like one. Check: the template's
-   `hooks/no-verify.mjs`, wired in `.claude/settings.json`; CI is the authority.
-8. **A template file is proved where it lands.** A change to `skills/kickoff/template/` comes
-   with a test that lays the template in a throwaway repository and sees the change work
-   there. Check: `tests/template-e2e.test.mjs`.
+   `hooks/no-verify.mjs`, wired in `.claude/settings.json`. It stops the accident and the
+   shortcut, not a determined evasion; CI, which nothing here can skip, is the authority.
+8. **A template file is proved where it lands.** A change to `skills/kickoff/template/` or to
+   a module comes with a test that lays it in a throwaway repository and sees the change work
+   there. Check: review; `tests/template-e2e.test.mjs` is where that proof goes.
 
 ## 4. Method
 

@@ -116,5 +116,7 @@ each upgrade.
 - Experience: a production multi-tenant SaaS with its own MCP and OAuth server, a consumer
   platform with plugin write guards and API keys, and a public single-app site on the Payload
   plugin with OAuth (2026).
+- The reference site is public; its `src/mcp/`, `src/domain/mcp-oauth/` and `docs/adr/` hold
+  the setup described above. <https://github.com/ycoumesgau/yoann-coumes-gauchet>
 - OAuth 2.1 with PKCE; RFC 8414 (authorization server metadata); RFC 9728 (protected resource
   metadata and the `WWW-Authenticate` challenge); RFC 9700 (refresh token rotation).

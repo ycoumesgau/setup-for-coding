@@ -32,10 +32,26 @@ test('content is tier 0, ordinary code tier 1, and what guards the project tier 
 })
 
 test('a change takes the highest tier among its files, and names the files that set it', () => {
-  assert.deepEqual(tierOf(['docs/a.md', 'README.md'], tiers), { tier: 0, setBy: ['README.md', 'docs/a.md'] })
-  assert.deepEqual(tierOf(['docs/a.md', 'src/a.ts'], tiers), { tier: 1, setBy: ['src/a.ts'] })
-  assert.deepEqual(tierOf(['docs/a.md', 'src/a.ts', 'AGENTS.md'], tiers), { tier: 2, setBy: ['AGENTS.md'] })
-  assert.deepEqual(tierOf([], tiers), { tier: null, setBy: [] })
+  assert.deepEqual(tierOf(['docs/a.md', 'README.md'], tiers), { tier: 0, setBy: ['README.md', 'docs/a.md'], secondPass: [] })
+  assert.deepEqual(tierOf(['docs/a.md', 'src/a.ts'], tiers), { tier: 1, setBy: ['src/a.ts'], secondPass: [] })
+  assert.deepEqual(tierOf(['docs/a.md', 'src/a.ts', 'AGENTS.md'], tiers), { tier: 2, setBy: ['AGENTS.md'], secondPass: [] })
+  assert.deepEqual(tierOf([], tiers), { tier: null, setBy: [], secondPass: [] })
+})
+
+test('instructions for agents are never content, wherever they sit and however the path is written', () => {
+  for (const file of ['apps/api/AGENTS.md', 'apps/api/CLAUDE.md', './AGENTS.md', './.claude/rules/api.md', './scripts/verify.mjs']) {
+    assert.equal(tierOfFile(file, tiers), 2, file)
+  }
+  assert.equal(tierOfFile('./docs/plans/active/billing/STATE.md', tiers), 0)
+})
+
+test('a second pass is asked for authentication, tenancy, billing and migrations, and for nothing else', () => {
+  const sensitive = ['apps/api/src/auth/session.ts', 'apps/api/src/tenancy/scope.ts', 'packages/billing/src/ledger.ts', 'apps/api/src/migrations/2026_01_02_invoices.ts']
+  assert.deepEqual(tierOf(sensitive, tiers).secondPass, [...sensitive].sort())
+  // The owner merges a change to the checks, but it does not take a second reviewer by rule.
+  const tooling = tierOf(['scripts/verify.mjs', '.github/workflows/ci.yml', 'AGENTS.md'], tiers)
+  assert.equal(tooling.tier, 2)
+  assert.deepEqual(tooling.secondPass, [])
 })
 
 test('a test file is not content: changing only tests can weaken them', () => {
@@ -109,7 +125,7 @@ test('the digest counts, lists the pull requests that skipped the section, and l
 
 test('every module says when to adopt it, what it adds and what it does not prove', () => {
   const all = modules()
-  assert.deepEqual(all.map((module) => module.name), ['auto-merge', 'dated-exceptions', 'merge-queue', 'weekly-digest'])
+  assert.deepEqual(all.map((module) => module.name), ['auto-merge', 'dated-exceptions', 'merge-queue', 'prototype-review', 'weekly-digest'])
   for (const module of all) {
     assert.ok(module.trigger?.length > 40, `${module.name}: no trigger`)
     assert.ok(module.adds?.length > 40, `${module.name}: does not say what it adds`)

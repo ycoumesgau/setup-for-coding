@@ -5,6 +5,8 @@
       "paths": [
         "AGENTS.md",
         "CLAUDE.md",
+        "**/AGENTS.md",
+        "**/CLAUDE.md",
         ".claude/**",
         ".github/**",
         ".githooks/**",
@@ -17,13 +19,22 @@
     { "tier": 0, "paths": ["docs/**", "**/*.md"] },
     {
       "tier": 2,
-      "paths": ["**/migrations/**", "**/auth/**", "**/access/**", "**/billing/**", "**/payments/**"]
+      "secondPass": true,
+      "paths": [
+        "**/migrations/**",
+        "**/auth/**",
+        "**/access/**",
+        "**/tenancy/**",
+        "**/tenants/**",
+        "**/billing/**",
+        "**/payments/**"
+      ]
     }
   ],
   "default": 1,
   "tiers": {
     "0": "content only. Merges once CI is green and one fresh-context review found nothing blocking.",
     "1": "ordinary code. Reviewed with fresh context, merged by whoever holds the merge.",
-    "2": "checks, CI, access, money or schema. A second review pass by someone who did not write it; the owner merges."
+    "2": "the project's own checks, CI and contract, or authentication, tenancy, billing and migrations. The owner merges."
   }
 }

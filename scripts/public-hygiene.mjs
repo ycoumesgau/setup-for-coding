@@ -35,12 +35,15 @@ export const rules = [
   {
     name: 'private-path',
     why: 'a path outside the repository',
-    find: (line) => line.match(/(?:\/mnt\/|\/home\/[a-z0-9_-]+\/|\/Users\/[A-Za-z0-9._-]+\/|[A-Z]:\\Users\\)\S*/g) ?? [],
+    find: (line) =>
+      line.match(
+        /(?:\/mnt\/|\/root\/|\/home\/[A-Za-z0-9._-]+\/|\/Users\/[A-Za-z0-9._-]+\/|[A-Z]:\\Users\\|\/tmp\/claude-[A-Za-z0-9._-]*\/|(?<![\w.\/-])~\/[A-Za-z0-9._-]+\/)\S*/g,
+      ) ?? [],
   },
   {
     name: 'session-link',
     why: 'a link to a private agent session',
-    find: (line) => line.match(/claude\.ai\/(?:code\/session_|chat\/|share\/)[A-Za-z0-9_-]+/g) ?? [],
+    find: (line) => line.match(/claude\.ai\/(?:code\/session_|code\/artifact\/|artifact\/|chat\/|share\/)[A-Za-z0-9_-]+/g) ?? [],
   },
   {
     name: 'email',
@@ -55,7 +58,7 @@ export const rules = [
     why: 'a string shaped like a credential',
     find: (line) =>
       line.match(
-        /sk-ant-[A-Za-z0-9_-]{8,}|gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|AKIA[0-9A-Z]{16}|xox[baprs]-[A-Za-z0-9-]{10,}|-----BEGIN [A-Z ]*PRIVATE KEY-----|eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g,
+        /sk-ant-[A-Za-z0-9_-]{8,}|sk-proj-[A-Za-z0-9_-]{8,}|[sr]k_(?:live|test)_[A-Za-z0-9]{10,}|AIza[0-9A-Za-z_-]{20,}|gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|AKIA[0-9A-Z]{16}|xox[baprs]-[A-Za-z0-9-]{10,}|-----BEGIN [A-Z ]*PRIVATE KEY-----|eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g,
       ) ?? [],
   },
   {

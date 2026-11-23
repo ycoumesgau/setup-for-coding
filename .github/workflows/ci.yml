@@ -1,18 +1,15 @@
 name: CI
 
+# A pull request is where a change is verified. Nothing runs after the merge.
 on:
   pull_request:
-  push:
-    branches: [main]
 
 permissions:
   contents: read
 
-# A newer push replaces the run of an older one on a pull request only: on the default
-# branch and in a merge queue every commit keeps its own verdict.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: true
 
 jobs:
   verify:

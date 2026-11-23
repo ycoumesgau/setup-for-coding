@@ -1,7 +1,10 @@
 name: Auto-merge tier 0
 
+# `pull_request_target`: this file and everything it checks out come from the base branch. A
+# pull request can change neither this workflow nor the rules that decide its tier. Nothing
+# from the pull request is checked out or run here; it is only read through the API.
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, synchronize, reopened, ready_for_review]
 
 permissions:
@@ -16,19 +19,27 @@ jobs:
     timeout-minutes: 5
     env:
       GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
       PR_URL: ${{ github.event.pull_request.html_url }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
-      # The rules and the script of the BASE branch: a pull request cannot lower its own tier.
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      # Both names of a renamed file count: moving a check out of its folder is not content.
+      # Each push decides again: a pull request armed while it was content is disarmed the
+      # moment it touches anything else, and the merge is tied to the commit that was judged.
       - run: |
-          gh pr diff "$PR_URL" --name-only > changed.txt
-          if node scripts/risk-tier.mjs --stdin --max 0 < changed.txt; then
-            gh pr merge "$PR_URL" --auto --squash
+          gh api "repos/${GH_REPO}/pulls/${PR_NUMBER}/files" --paginate \
+            --jq '.[] | .filename, (.previous_filename // empty)' > changed.txt
+          if [ -s changed.txt ] && node scripts/risk-tier.mjs --stdin --max 0 < changed.txt; then
+            gh pr merge "$PR_URL" --auto --squash --match-head-commit "$HEAD_SHA"
           else
+            gh pr merge "$PR_URL" --disable-auto || true
             echo "Above tier 0: a person merges."
           fi

@@ -20,6 +20,25 @@ test('skipping the hooks is refused, whatever the spelling', () => {
   refused('git config --unset core.hooksPath')
 })
 
+test('the same bypass under another spelling is refused too', () => {
+  refused('git push --no-verif origin main')
+  refused('git push --no-ver origin main')
+  refused('git push "--no-verify" origin main')
+  refused("git commit '--no-verify' -m x")
+  refused('git -c core.hookspath=/dev/null push')
+  refused('git -c CORE.HOOKSPATH=/dev/null push')
+  refused('git config Core.HooksPath /tmp/none')
+  refused('GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.hooksPath GIT_CONFIG_VALUE_0=/dev/null git push')
+  refused('GIT_CONFIG_PARAMETERS="\'core.hooksPath=/dev/null\'" git push')
+  refused('bash -c "git push --no-verify"')
+  refused("sh -c 'git commit -n -m x'")
+  refused('bash <<EOF\ngit push --no-verify\nEOF')
+  refused('git push \\\n  --no-verify origin main')
+  refused('rm .githooks/pre-push && git push')
+  refused('chmod -x .githooks/pre-push; git push')
+  refused('mv .githooks .githooks.off && git push')
+})
+
 test('ordinary git commands pass', () => {
   allowed('git commit -m "fix: the importer"')
   allowed('git push -u origin feature')
@@ -35,6 +54,10 @@ test('describing the option is not using it', () => {
   allowed('git commit -m "docs: say that --no-verify is refused"')
   allowed("git commit -m 'never run git push --no-verify'")
   allowed('git commit -F - <<EOF\nfix: refuse git commit --no-verify\nEOF')
+  allowed('git commit -m "the hook now refuses GIT_CONFIG_COUNT and a removed .githooks folder"')
+  allowed('cat .githooks/pre-push')
+  allowed('ls -la .githooks && git status')
+  allowed('bash scripts/dev.sh && git push origin feature')
 })
 
 test('anything that is not a command is ignored', () => {
@@ -61,6 +84,25 @@ test('a fresh clone gets its hooks path, and is told so', () => {
 test('a clone already set up is left alone, and the session still gets its reminder', () => {
   const lines = sessionStart({ hasHooks: true, git: git({ 'config --get core.hooksPath': { status: 0, stdout: '.githooks\n' } }) })
   assert.equal(lines.length, 1)
+})
+
+test('a clone pointed at another hooks folder is brought back to the repository\'s', () => {
+  const calls = []
+  const lines = sessionStart({
+    hasHooks: true,
+    git: (args) => {
+      calls.push(args.join(' '))
+      return { status: 0, stdout: args[1] === '--get' ? '/tmp/elsewhere\n' : '' }
+    },
+  })
+  assert.ok(calls.includes('config core.hooksPath .githooks'))
+  assert.match(lines[0], /now read from \.githooks/)
+})
+
+test('a repository without hooks is not given a hooks path', () => {
+  const calls = []
+  sessionStart({ hasHooks: false, git: (args) => (calls.push(args.join(' ')), { status: 0, stdout: '' }) })
+  assert.deepEqual(calls, [])
 })
 
 test('when git refuses the setting, the session is told to run the check itself', () => {

@@ -8,45 +8,64 @@
  *
  * `git commit -n` means `--no-verify`; `git push -n` means `--dry-run`. Hence two patterns.
  *
- * What it does not prove: a matcher on the command line does not see a command built
- * otherwise (a script, a variable). It closes the door agents actually use; CI stays the
- * authority.
+ * What it does not prove: it reads one command line. A command built elsewhere (a script
+ * written first and run next, a variable, an alias) passes. It stops the accident and the
+ * shortcut, not a determined evasion; CI, which nothing here can skip, stays the authority.
  */
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
-const COMMIT = /\bgit\b[^\n;&|]*\bcommit\b[^\n;&|]*(?:\s--no-verify\b|\s-[a-zA-Z]*n[a-zA-Z]*\b)/
-const PUSH_OR_MERGE = /\bgit\b[^\n;&|]*\b(?:push|merge|rebase|am|cherry-pick)\b[^\n;&|]*\s--no-verify\b/
+/** Git accepts any unambiguous prefix of a long option: `--no-verif` skips the hooks as well. */
+const SKIP = String.raw`--no-ver[a-z]*`
+const COMMIT = new RegExp(String.raw`\bgit\b[^\n;&|]*\bcommit\b[^\n;&|]*(?:\s${SKIP}\b|\s-[a-zA-Z]*n[a-zA-Z]*\b)`)
+const OTHERS = new RegExp(String.raw`\bgit\b[^\n;&|]*\b(?:push|merge|rebase|am|cherry-pick)\b[^\n;&|]*\s${SKIP}\b`)
+
+/** Ways to make git ignore the repository's hooks without naming the option. */
+const AROUND = [
+  // Configuration passed through the environment.
+  /\bGIT_CONFIG_(?:COUNT|KEY_\d+|VALUE_\d+|PARAMETERS|GLOBAL|SYSTEM)\b/,
+  /\bHUSKY=0\b/,
+  // The hooks folder itself removed, moved or made non-executable from a shell.
+  /\b(?:rm|mv|chmod|truncate|unlink)\b[^\n;&|]*\.githooks\b/,
+]
 
 /** Pointing git at another hooks folder, or at none, skips them just as well. */
 const movesHooks = (bare) => {
-  for (const [, value] of bare.matchAll(/\bgit\b[^\n;&|]*\s-c\s+core\.hooksPath=(\S*)/g)) {
+  for (const [, value] of bare.matchAll(/\bgit\b[^\n;&|]*\s-c\s+core\.hookspath=(\S*)/gi)) {
     if (value !== '.githooks') return true
   }
-  for (const [, rest] of bare.matchAll(/\bgit\b[^\n;&|]*\bconfig\b([^\n;&|]*\bcore\.hooksPath\b[^\n;&|]*)/g)) {
+  for (const [, rest] of bare.matchAll(/\bgit\b[^\n;&|]*\bconfig\b([^\n;&|]*\bcore\.hookspath\b[^\n;&|]*)/gi)) {
     if (/--get\b|--get-all\b|--list\b|\s-l\b/.test(rest)) continue
-    if (/\bcore\.hooksPath\s+\.githooks\s*$/.test(rest)) continue
+    if (/\bcore\.hookspath\s+\.githooks\s*$/i.test(rest)) continue
     return true
   }
   return false
 }
-const HUSKY_OFF = /\bHUSKY=0\b/
 
 /**
  * The command without what it quotes: text between quotes and the body of a heredoc. A commit
- * message that describes this hook must not be refused as if it used the option.
+ * message that describes this hook must not be refused as if it used the option. A quoted
+ * string that is nothing but an option (`"--no-verify"`) is kept: quoting it changes nothing
+ * for git.
  */
 const unquoted = (command) =>
   command
     .replace(/<<-?\s*['"]?(\w+)['"]?[\s\S]*?\n\s*\1\b/g, ' ')
-    .replace(/'[^']*'/g, "''")
-    .replace(/"(?:[^"\\]|\\.)*"/g, '""')
+    .replace(/'([^']*)'/g, (whole, inner) => (/^-{1,2}[\w.=-]+$/.test(inner) ? inner : "''"))
+    .replace(/"((?:[^"\\]|\\.)*)"/g, (whole, inner) => (/^-{1,2}[\w.=-]+$/.test(inner) ? inner : '""'))
+
+/** A shell given a command as text, or fed one: what it runs is inside the quotes. */
+const RUNS_A_SHELL = /\b(?:bash|sh|zsh|dash|ksh|eval|xargs)\b/
+
+const refuses = (text) => COMMIT.test(text) || OTHERS.test(text) || movesHooks(text) || AROUND.some((pattern) => pattern.test(text))
 
 /** The reason for the refusal, or `null` when the command is allowed. */
 export const noVerifyRefusal = (command) => {
   if (typeof command !== 'string') return null
-  const bare = unquoted(command)
-  if (COMMIT.test(bare) || PUSH_OR_MERGE.test(bare) || movesHooks(bare) || HUSKY_OFF.test(bare)) {
+  // A backslash at the end of a line continues the command on the next one.
+  const joined = command.replace(/\\\r?\n/g, ' ')
+  const hidden = RUNS_A_SHELL.test(joined) && refuses(joined.replace(/['"]/g, ' '))
+  if (refuses(unquoted(joined)) || hidden) {
     return (
       'Skipping the git hooks is refused. The hook that failed says what to fix, and ' +
       '`node scripts/verify.mjs` replays it on demand. If the hook itself is wrong, correct it in a visible change.'
