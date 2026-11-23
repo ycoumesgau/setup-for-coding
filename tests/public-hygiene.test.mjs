@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { findings, isFrench, mask, parseDenylist } from '../scripts/public-hygiene.mjs'
+import { findings, holdsTerm, isFrench, mask, parseDenylist } from '../scripts/public-hygiene.mjs'
 
 const check = (text, options) => findings([{ path: 'notes.md', text }], options)
 const rulesOf = (found) => found.map((finding) => finding.rule)
@@ -57,6 +57,13 @@ test('a term of the private deny-list is reported, whatever its case, and never 
   const found = check('Measured on the Zephyrine project.', { denylist: parseDenylist('zephyrine\nother-name') })
   assert.deepEqual(rulesOf(found), ['denylist'])
   assert.ok(!JSON.stringify(found).toLowerCase().includes('zephyrine'))
+})
+
+test('a deny-list term matches where a word starts, not inside another word', () => {
+  assert.equal(holdsTerm('See ticket ACE-123 for the story.', 'ace-'), true)
+  assert.equal(holdsTerm('Replace the place-holder first.', 'ace-'), false)
+  assert.equal(holdsTerm('Price is 3.50 (approx.)', '(approx.)'), true)
+  assert.equal(holdsTerm('The zephyrines are in bloom.', 'zephyrine'), true)
 })
 
 test('the deny-list accepts lines or commas and drops terms too short to mean anything', () => {

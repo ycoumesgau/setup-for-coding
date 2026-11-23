@@ -106,6 +106,15 @@ export const parseDenylist = (raw) =>
     .map((term) => term.trim().toLowerCase())
     .filter((term) => term.length >= 3)
 
+/**
+ * A term counts only where a word starts: "ace-" must not match inside "place-holder". The end
+ * is left open, so a prefix such as a ticket key matches every ticket.
+ */
+export const holdsTerm = (line, term) => {
+  const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return new RegExp(`(?<![a-z0-9])${escaped}`, 'i').test(line)
+}
+
 /** Never print a match in full: the first three characters are enough to find it. */
 export const mask = (text) => `${text.slice(0, 3)}…(${text.length} chars)`
 
@@ -126,9 +135,8 @@ export const findings = (files, { denylist = [], exempt = {} } = {}) => {
         }
       }
       if (!skipped.has('denylist')) {
-        const lower = line.toLowerCase()
         for (const term of denylist) {
-          if (lower.includes(term)) {
+          if (holdsTerm(line, term)) {
             found.push({ at, rule: 'denylist', why: 'a term of the private deny-list', shown: mask(term) })
           }
         }
