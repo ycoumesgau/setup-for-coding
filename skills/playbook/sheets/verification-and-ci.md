@@ -81,7 +81,8 @@ session): then split `full` by area, or run sessions on larger self-hosted machi
 - **Trading clock for minutes.** Building once for all jobs saved 2.4 billed minutes and
   added 4 of clock time; it was withdrawn. Measure both before keeping a saving.
 - **Queue and concurrency.** `cancel-in-progress` keyed on the workflow alone cancels queue
-  builds; key the group on the ref. A flaky test in a queue blocked one queue for at least 9 hours.
+  builds; key the group on the ref. One report describes a queue stuck for at least nine
+  hours; a test that fails at random does the same to every change behind it.
 
 ## Hold it with a check
 
@@ -104,12 +105,13 @@ session): then split `full` by area, or run sessions on larger self-hosted machi
 - Stripe, "Minions" part 2 (2026-02-19): linters run before the push, at most two CI rounds,
   then back to a person.
   <https://stripe.dev/blog/minions-stripes-one-shot-end-to-end-coding-agents-part-2>
-- Slack Engineering (2022-02-18): most end-to-end tests moved after merge; it holds where a
-  merge is not a release.
+- Slack Engineering (2022-02-18): many end-to-end tests moved to run after merging; it holds
+  where a merge is not a release.
   <https://slack.engineering/balancing-safety-and-velocity-in-ci-cd-at-slack/>
-- Mergify, "State of Merge Queues 2026" (2026-07-27): about 6% of private merges batched.
+- Mergify, "State of Merge Queues 2026" (updated 2026-07-27): about 6% of private merges ride
+  in a batch.
   <https://mergify.com/reports/state-of-merge-queues-2026>
-- GitHub community discussion 15254: a queue blocked by a flaky test.
+- GitHub community discussion 15254: a merge queue reported stuck for at least nine hours.
   <https://github.com/orgs/community/discussions/15254>
 - Claude Code, "Configure cloud environments" (read 2026-11-22): Docker available, about 4
   vCPU and 16 GB. <https://code.claude.com/docs/en/cloud-environments>

@@ -35,7 +35,7 @@ a residency claim nobody can prove.
 | First-party provider APIs, direct | Newest models, simplest contracts | The Anthropic API offers `us` or `global` processing, no EU zone | No residency duty, or an exception with an end date |
 | Same models through a cloud in an EU region (Bedrock, Vertex) | Processing region set by endpoint | Cloud account, IAM, per-region model availability; a cross-region EU profile fixes a geography, not a region | Residency is a contractual duty |
 | EU providers of open models (Mistral, OVHcloud, Scaleway) | EU processing at low price per token | Catalogues change fast; quality to measure per step | The step is bounded and the bench says it is good enough |
-| Self-hosted open models | No provider | 4 to 8 high-end GPUs for a top open model, weeks of tuning, on-call, licence and weight-integrity tracking; on dedicated hardware, one published measurement found it 44% dearer than a cached API | Third-party estimates put the threshold at a few hundred engineers; or a small model for a bounded task on data that cannot leave |
+| Self-hosted open models | No provider | 4 to 8 high-end GPUs for a top open model, weeks of tuning, on-call, licence and weight-integrity tracking; on dedicated hardware, one published total-cost measurement found it about 44% dearer than a cached API | Third-party estimates put the threshold at a few hundred engineers; or a small model for a bounded task on data that cannot leave |
 | A gateway in front of all of it | One endpoint | One more processor and supply chain: a popular gateway package was compromised twice on PyPI in 2026 | Only when routing is the need |
 
 ## Default
@@ -106,7 +106,7 @@ enough. A solo founder should not self-host a top model.
 - Anthropic, "Regional compliance": Europe listed for Bedrock and Vertex.
   <https://claude.com/regional-compliance>
 - Pegatron, arXiv 2607.13080 (2026-07-13): self-hosted open model against an API model over
-  28 days each; dedicated hardware cost 44% more than the cached API.
+  28 days each; in total cost, a dedicated reservation came out 43.8% above the cached API.
   <https://arxiv.org/html/2607.13080v1>
 - LiteLLM compromises on PyPI (March and October 2026), as reported by BleepingComputer and
   StepSecurity.

@@ -63,13 +63,13 @@ planner earns its cost.
   long, crashed while holding them or skipped them: twenty agents ran at the throughput of two
   or three. In a 2026 study, reserving files before writing raised integration success but
   serialized 96.7% of runs.
-- **Announcing after works.** In a 2026 study, a message describing the finished concurrent
-  change resolved 82% of semantic interferences; on 417 real pairs of pull requests, only one
+- **Announcing after works.** In a 2026 study on constructed tasks, a message describing the
+  finished concurrent change recovered 82% of runs; on 417 real pairs of pull requests, only one
   run of 834 showed any interference.
 - **Ref locks are not available everywhere.** From a cloud session, pushing a custom git ref
   was refused by the session's proxy with HTTP 403.
-- **Messaging stops at the account.** Claude Code's cross-session messaging links sessions of
-  one account only; sessions on two accounts cannot reach each other.
+- **Messaging stops at the account.** Claude Code's cross-session messaging is documented for
+  a user's own sessions; sessions on two accounts could not reach each other.
 - **Forgotten branches look alive.** Branches merged by squash and never deleted made about
   100 "live" branches in 14 days. Ignoring files that no longer differ from the base cut the
   files shared by several branches from 503 to 260.
@@ -97,7 +97,8 @@ planner earns its cost.
 
 - Experience: one production project and its cloud sessions on several accounts, with the
   overlap map measured on its remote (2026).
-- Cursor, "Scaling agents" (2026-01-14): locks and a shared coordination file failed.
+- Cursor, "Scaling agents" (2026-01-14): a shared file with locks failed; locks were held too
+  long or never released.
   <https://cursor.com/blog/scaling-agents>
 - Anthropic, "Building a C compiler" (2026-02-05): lock files in git, and their limit.
   <https://www.anthropic.com/engineering/building-c-compiler>
@@ -105,5 +106,6 @@ planner earns its cost.
   <https://arxiv.org/abs/2608.00947>
 - arXiv 2609.25396 (2026-09-21, preprint): interference between concurrent agent changes.
   <https://arxiv.org/abs/2609.25396>
-- Claude Code, "Cross-session messaging" (read 2026-11-22): one account only.
+- Claude Code, "Cross-session messaging" (read 2026-11-22): messages between a user's own
+  sessions.
   <https://code.claude.com/docs/en/cross-session-messaging>

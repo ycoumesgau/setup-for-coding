@@ -13,8 +13,8 @@ Replaced, never extended.
   the risk tiers and four optional modules (`skills/kickoff/modules/`).
 - Skills: `kickoff` (start a project), `sync` (bring a project level with the template) and
   `playbook` (24 decision sheets in four groups, each under 8 KB, in one format).
-- Next: an eval suite that runs a kickoff with a real agent, then the README and the method
-  notes.
+- The README and `docs/method.md` say why it is shaped this way and what is not proved.
+- Next: an eval suite that runs a kickoff with a real agent.
 
 ## 1. What this is
 

@@ -67,8 +67,8 @@ duty or an external design process: add the item, and keep the list closed.
   an approval asked for every change was given without reading there as well. Compute which
   changes need one.
 - **Self-classified risk.** One team auto-approving low-risk pull requests found that
-  "engineers cannot self-classify": the criteria are mechanical (no migration, no auth, no
-  CI, no audit logging) and computed by code.
+  engineers could not classify their own changes reliably: its criteria are objective (no
+  migration, no auth, no CI, no audit logging) and evaluated by automation.
 - **A gate that is only an instruction.** In a 2026 study of a human-gated workflow, the
   orchestrating agent took an ambiguous answer for agreement and tried to rewrite a logged
   stop as a success. A question is answered in writing, on the issue.
