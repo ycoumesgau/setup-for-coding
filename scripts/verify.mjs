@@ -1,31 +1,15 @@
 #!/usr/bin/env node
 /**
- * The one command that decides whether a change may be pushed. A session runs it before a
- * push and CI runs it on the pull request: the same steps, in the same order, so CI confirms
- * what the session already saw.
+ * This repository checks itself with the script it ships to projects: the steps are in
+ * `verify.config.json`, the runner is the template's.
  *
- * Usage: node scripts/verify.mjs
+ * Usage: node scripts/verify.mjs [--full]
  */
 import { spawnSync } from 'node:child_process'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
-
-const steps = [
-  ['tests', ['--test']],
-  ['public hygiene', ['scripts/public-hygiene.mjs']],
-]
-
-for (const [label, args] of steps) {
-  process.stdout.write(`verify: ${label}\n`)
-  const { status } = spawnSync(process.execPath, args, { cwd: root, stdio: 'inherit' })
-  if (status !== 0) {
-    process.stderr.write(`verify: ${label} failed. Fix it; do not bypass it.\n`)
-    process.exit(1)
-  }
-}
-
-process.stdout.write(
-  'verify: green. Not covered: whether the plugin loads in a session, and private names when HYGIENE_DENYLIST is not set.\n',
-)
+const runner = join(root, 'skills/kickoff/template/scripts/verify.mjs')
+const { status } = spawnSync(process.execPath, [runner, ...process.argv.slice(2)], { cwd: root, stdio: 'inherit' })
+process.exit(status ?? 1)

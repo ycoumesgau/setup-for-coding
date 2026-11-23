@@ -1,0 +1,3 @@
+#!/bin/sh
+# What CI would run first on this change, so that a red is found here and not there.
+exec node scripts/verify.mjs

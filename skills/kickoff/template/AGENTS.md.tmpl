@@ -1,0 +1,95 @@
+# AGENTS.md — {{PROJECT_NAME}}
+
+The working contract of this repository, loaded in every agent session (`CLAUDE.md` imports
+it). It holds rules and reflexes only, and each rule names the check that enforces it; a rule
+no check enforces says so. Rules proper to one part of the code live in `.claude/rules/`,
+loaded when a matching file is read. Stories live in `docs/plans/`, decisions in `docs/adr/`,
+measured traps in `docs/pitfalls/`. Sizes are capped by `scripts/agent-memory-check.mjs`.
+
+## 0. Current state
+
+Replaced, never extended (25 lines at most).
+
+- TODO(kickoff): the phase, what is live and where, the open workstreams with their plan.
+
+## 1. The product
+
+TODO(kickoff): what it is, for whom, what it sells and how it is priced, its surfaces, what it
+will not do. Five to ten lines; the product requirements hold the rest.
+
+## 2. Where authority lives
+
+- `docs/prd/`: what the product must do. Its principles and its frozen decisions are binding:
+  if an implementation pushes against one, stop and ask (section 6, "Decisions").
+- `docs/adr/`: technical decisions, one per file, current text only. An accepted decision
+  binds; a proposed one is context; an open one carries the rule by which it will be decided,
+  and is never decided early.
+- This file wins over a plan. A plan never changes a rule: it proposes the change here.
+- TODO(kickoff): the design source (prototype, design file) and which one wins over the code.
+
+## 3. Stack
+
+TODO(kickoff): one row per piece (framework, data, hosting, jobs, inference, observability),
+with the exact version where an upgrade is a tested change, and the ADR that chose it. State
+the residency constraint of the data, and of inference if it differs.
+
+## 4. Structure
+
+TODO(kickoff): the apps and packages, who may talk to whom, who holds the database
+credentials. A package is born from a second consumer, not before.
+
+## 5. Rules
+
+TODO(kickoff): the invariants of this product, each with the test or lint that holds it:
+access and tenancy, the single write path, migrations, secrets, what never leaves, naming and
+language. The playbook's "security on day one" sheet lists the questions to answer.
+
+Rules every project starts with:
+
+1. **No text for the user is hard-coded.** Not enforced until the project picks its check.
+2. **Secrets live in the deployment platform**, never in the repository; a token is never
+   printed. Check: `.claude/settings.json` denies reading `.env` files.
+3. **A check is never bypassed**: no `--no-verify`, no skipped test, no exemption added to
+   make a push pass. Check: `scripts/hooks/no-verify.mjs`; CI is the authority.
+4. **An exception to a rule carries an expiry date.** Past it, the test turns red. Without a
+   date it does not exist. Not enforced until the first exception.
+
+## 6. Method
+
+- **Verify before pushing.** `node scripts/verify.mjs` runs the fast level and names what it
+  does not cover; the pre-push hook runs it. `node scripts/verify.mjs --full` runs before a
+  pull request opens. CI runs the same command: it confirms, it does not discover. A red found
+  in CI that the session could have seen is a defect of the session.
+- **One task, one session, one branch, one pull request.** Lots of the same request are
+  commits on one branch. Push a branch often: it costs nothing without a pull request. Open
+  the pull request when the work is finished, and push to it only a grouped fix.
+- **A check is believed only after it was seen red.** A pull request names the mutation that
+  turned each new check red. After a mutation that stayed green, find which other check
+  caught the case, or write the one that does.
+- **Decisions.** Decide what is yours to decide, and write it in the pull request: one line,
+  the decision and its reason. Ask before the code that depends on it when the point is on the
+  closed list: a data schema or an API contract; authentication, payment, tenant isolation; a
+  new provider or vendor; a price; a screen or flow with no design; an expense. An answer that
+  comes after the code is written arrives too late to be free.
+- **Review with fresh context**, two rounds at most. `reviewer-conformity` reads every lot
+  against the request and the decisions; `reviewer-risk` reads code and tooling, and replays a
+  mutation of its own; `reviewer-prototype` compares a designed screen with its captures. Give
+  them the request word for word, the pull request body and the diff, never the story of the
+  session. Check each finding before acting on it; record the ones you reject, with the
+  reason, in a comment of the pull request. A lot that touches authentication, tenancy,
+  billing or a migration gets a second pass by someone who did not write it.
+- **Where to write.** A story: the plan of its workstream, one file per lot, written once. A
+  state: `STATE.md` of the workstream, and section 0 here, both replaced. A measured trap:
+  one file in `docs/pitfalls/`, plus one line here or in a path rule if it changes conduct. A
+  decision: an ADR. A question or an owed action: an issue.
+- **What did not run is said**, with its date and its owner. A limit of the instrument is
+  never written as a rule of the project.
+
+## 7. Commands
+
+| Command                               | Purpose                                              |
+| ------------------------------------- | ---------------------------------------------------- |
+| `node scripts/verify.mjs`             | The fast level: what every push needs                |
+| `node scripts/verify.mjs --full`      | Everything CI runs                                   |
+| `node scripts/agent-memory-check.mjs` | The size and content of what agents load             |
+| TODO(kickoff)                         | Dev server, tests, migrations, generated files       |

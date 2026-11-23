@@ -8,9 +8,10 @@ enforces says so.
 
 Replaced, never extended.
 
-- In place: the plugin manifest, this contract, the public-hygiene check, its tests and CI.
-- The plugin ships nothing yet. Next: the project template with its guards, then the kickoff
-  skill, then the playbook.
+- In place: the plugin manifest, this contract, the public-hygiene check, and the project
+  template with its checks, reviewers and CI (`skills/kickoff/template/`).
+- The plugin ships no skill yet. Next: coordination and decision tooling, the kickoff and sync
+  skills, then the playbook.
 
 ## 1. What this is
 
@@ -24,8 +25,11 @@ The repository is public and meant to be read: what it says about agents, it app
 
 - `.claude-plugin/`: the plugin manifest, and the marketplace entry that lists it. The plugin
   root is the repository root.
-- `skills/`, `agents/`: what the plugin ships.
-- `scripts/`: this repository's own checks. `tests/`: their tests.
+- `skills/`: what the plugin ships. `skills/kickoff/template/` holds the files a project
+  receives, under neutral names (`dot-claude/`, `AGENTS.md.tmpl`) so that nothing here takes
+  them for this repository's own configuration; `skills/kickoff/init.mjs` lays them.
+- `scripts/`: this repository's own checks. `tests/`: the tests of every check, the
+  template's included. This repository runs the template's scripts on itself.
 - `docs/`: the method behind the choices.
 
 ## 3. Rules
@@ -41,9 +45,13 @@ The repository is public and meant to be read: what it says about agents, it app
 5. **A check is believed only after it was seen red.** Every rule of a check has a test that
    feeds it a violation. Check: review; the tests of each check are its proof.
 6. **No story in this file.** A dated account of what a session did belongs in a pull request.
-   Not enforced yet.
+   Check: the template's `agent-memory-check.mjs`, run here by `verify` and by the write hook.
 7. **Never bypass a check**: no `--no-verify`, no skipped test, no exemption added to make a
-   push pass. An exemption is a line of code, reviewed like one. Not enforced yet.
+   push pass. An exemption is a line of code, reviewed like one. Check: the template's
+   `hooks/no-verify.mjs`, wired in `.claude/settings.json`; CI is the authority.
+8. **A template file is proved where it lands.** A change to `skills/kickoff/template/` comes
+   with a test that lays the template in a throwaway repository and sees the change work
+   there. Check: `tests/template-e2e.test.mjs`.
 
 ## 4. Method
 
