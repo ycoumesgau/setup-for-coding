@@ -71,3 +71,31 @@ test('the plugin imposes no hook and no server on the projects that install it',
   // Hooks and reviewers reach a project through its own files, where it can read and change them.
   for (const path of ['hooks/hooks.json', '.mcp.json', 'agents']) assert.equal(existsSync(join(root, path)), false, path)
 })
+
+const workflows = [
+  '.github/workflows/ci.yml',
+  'skills/kickoff/template/dot-github/workflows/ci.yml',
+  'skills/kickoff/modules/merge-queue/files/dot-github/workflows/ci.yml',
+  'skills/kickoff/modules/weekly-digest/files/dot-github/workflows/weekly-digest.yml',
+  'skills/kickoff/modules/auto-merge/files/dot-github/workflows/auto-merge.yml',
+]
+
+test('no workflow runs on a moving image label', () => {
+  for (const path of workflows) {
+    const runners = [...text(path).matchAll(/^\s+runs-on: (.+)$/gm)].map((match) => match[1])
+    assert.ok(runners.length > 0, path)
+    for (const runner of runners) assert.doesNotMatch(runner, /latest/, `${path} runs on ${runner}`)
+  }
+})
+
+test('a run on the default branch or in a merge queue is never cancelled by the next one', () => {
+  for (const path of workflows.slice(0, 3)) {
+    assert.match(text(path), /cancel-in-progress: \$\{\{ github\.event_name == 'pull_request' \}\}/, path)
+    assert.doesNotMatch(text(path), /cancel-in-progress: true/, path)
+  }
+})
+
+test('every workflow states the permissions it needs, and CI needs only to read', () => {
+  for (const path of workflows) assert.match(text(path), /^permissions:\n/m, `${path} inherits the default permissions`)
+  for (const path of workflows.slice(0, 3)) assert.match(text(path), /^permissions:\n  contents: read\n\n/m, path)
+})

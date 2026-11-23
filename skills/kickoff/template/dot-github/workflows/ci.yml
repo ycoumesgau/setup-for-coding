@@ -8,15 +8,18 @@ on:
 permissions:
   contents: read
 
+# A newer push replaces the run of an older one on a pull request only: on the default
+# branch and in a merge queue every commit keeps its own verdict.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   verify:
     # The one check to require on the default branch.
     name: Verify
-    runs-on: ubuntu-latest
+    # A named image, not a moving label: the day "latest" changes, every job changes with it.
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
