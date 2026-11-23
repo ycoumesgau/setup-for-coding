@@ -69,7 +69,9 @@ test('the hostname of a real deployment is reported, a placeholder is not', () =
 test('a term of the private deny-list is reported, whatever its case, and never printed', () => {
   const found = check('Measured on the Zephyrine project.', { denylist: parseDenylist('zephyrine\nother-name') })
   assert.deepEqual(rulesOf(found), ['denylist'])
-  assert.ok(!JSON.stringify(found).toLowerCase().includes('zephyrine'))
+  // Not one letter of it: the output of this check is a public CI log.
+  assert.ok(!JSON.stringify(found).toLowerCase().includes('zep'))
+  assert.equal(found[0].shown, 'term 1 of 2')
 })
 
 test('a deny-list term matches where a word starts, not inside another word', () => {

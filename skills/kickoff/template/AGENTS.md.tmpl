@@ -71,17 +71,19 @@ Rules every project starts with:
   edit a shared file, or split the work. Do not add to a file every branch appends to: write
   a file of your own.
 - **The care a change needs is computed**, not felt: `node scripts/risk-tier.mjs`. Tier 0
-  (content) merges on green CI and one review. Tier 2 (the checks, CI and this contract;
-  authentication, tenancy, billing, migrations) is merged by the owner, and the script names
-  the files that call for a second review pass.
+  (pages and images under `docs/`, README files) merges on green CI and one review. Tier 2
+  is merged by the owner: what binds the project (the checks, CI, this contract, instructions
+  for agents, the product requirements) and authentication, tenancy, billing, migrations. The
+  script names the files that call for a second review pass.
 - **A check is believed only after it was seen red.** A pull request names the mutation that
   turned each new check red. After a mutation that stayed green, find which other check
   caught the case, or write the one that does.
 - **Decisions.** Decide what is yours to decide, and write it in the pull request: one line,
   the decision and its reason. Ask before the code that depends on it when the point is on the
   closed list: a data schema or an API contract; authentication, payment, tenant isolation; a
-  new provider or vendor; a price; a screen or flow with no design; an expense. An answer that
-  comes after the code is written arrives too late to be free.
+  new provider or vendor; a price; a screen or flow with no design; an expense; building less
+  than what was specified. An answer that comes after the code is written arrives too late
+  to be free.
 - **A specification is built as written.** Shipping a simpler version "for now" is not a
   session's decision: say what blocks, propose, and let the owner choose.
 - **Review with fresh context**, two rounds at most. `reviewer-conformity` reads every lot

@@ -12,11 +12,16 @@ import { adoptedModules, compare, isManaged, needsAction } from '../skills/sync/
 const script = join(dirname(fileURLToPath(import.meta.url)), '..', 'skills/sync/sync.mjs')
 let project
 const sync = (...args) => spawnSync(process.execPath, [script, '--target', project, ...args], { encoding: 'utf8' })
+const commit = (cwd, message) => {
+  spawnSync('git', ['add', '-A'], { cwd })
+  spawnSync('git', ['-c', 'user.email=test@example.com', '-c', 'user.name=test', '-c', 'commit.gpgsign=false', 'commit', '--quiet', '-m', message], { cwd })
+}
 
 before(() => {
   project = mkdtempSync(join(tmpdir(), 'sync-'))
   spawnSync('git', ['init', '--quiet'], { cwd: project })
   lay({ target: project, values: { PROJECT_NAME: 'Orchard' } })
+  commit(project, 'kickoff')
 })
 after(() => rmSync(project, { recursive: true, force: true }))
 
@@ -65,6 +70,13 @@ test('a check edited by hand or deleted is reported, and --apply restores it wit
   assert.match(report.stdout, /missing: \.githooks\/pre-push/)
   assert.match(report.stdout, /2 file\(s\) behind the template/)
 
+  // An edit nobody committed would be lost for good: it is refused, and nothing is written.
+  const refusal = sync('--apply')
+  assert.equal(refusal.status, 2)
+  assert.match(refusal.stderr, /uncommitted changes[\s\S]*scripts\/verify\.mjs/)
+  assert.match(readFileSync(join(project, 'scripts/verify.mjs'), 'utf8'), /local hack/)
+
+  commit(project, 'a local hack')
   assert.equal(sync('--apply').status, 0)
   assert.doesNotMatch(readFileSync(join(project, 'scripts/verify.mjs'), 'utf8'), /local hack/)
   assert.ok(statSync(join(project, '.githooks/pre-push')).mode & 0o100)
@@ -106,7 +118,8 @@ test('the files of an adopted module are compared too; a module the project neve
     assert.match(report.stdout, /differs: scripts\/exceptions-check\.mjs/)
     assert.doesNotMatch(report.stdout, /exceptions\.json/, 'the list of exceptions is the project\'s')
     assert.doesNotMatch(report.stdout, /weekly-digest|auto-merge/)
-    run('--apply')
+    commit(withModules, 'a loosened check')
+    assert.equal(run('--apply').status, 0)
     assert.doesNotMatch(readFileSync(join(withModules, 'scripts/exceptions-check.mjs'), 'utf8'), /loosened/)
   } finally {
     rmSync(withModules, { recursive: true, force: true })

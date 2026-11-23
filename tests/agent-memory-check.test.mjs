@@ -35,7 +35,7 @@ test('the specific cap wins over the general one', () => {
   const found = problems(
     { path: 'AGENTS.md', text: contract() },
     { path: 'docs/plans/active/billing/STATE.md', text },
-    { path: 'docs/plans/active/billing/lot-1-invoices.md', text },
+    { path: 'docs/plans/active/billing/2026-03-04-invoices.md', text },
   )
   one(found, 'docs/plans/active/billing/STATE.md is 7000 bytes, over its 6000-byte cap')
 })
@@ -70,7 +70,7 @@ test('a dated reference is not a story, and a plan may tell one', () => {
   assert.deepEqual(problems({ path: 'AGENTS.md', text: contract(reference) }), [])
   const story = '- 2026-03-04: the session rebuilt the importer; run 45200903757 was red.\n'
   assert.deepEqual(
-    problems({ path: 'AGENTS.md', text: contract() }, { path: 'docs/plans/active/import/lot-1-parser.md', text: story }),
+    problems({ path: 'AGENTS.md', text: contract() }, { path: 'docs/plans/active/import/2026-03-04-parser.md', text: story }),
     [],
   )
 })
@@ -100,7 +100,10 @@ test('a configuration cannot switch the check off, and every loosened value is s
   const loose = mergeConfig({ caps: [{ files: 'AGENTS.md', maxBytes: 1_000_000 }], loaded: [], placeholder: '', state: { maxLines: 100_000 } })
   const refused = configProblems(loose).join(' ')
   assert.match(refused, /"loaded" must keep AGENTS\.md/)
-  assert.match(refused, /"placeholder" may not be emptied/)
+  assert.match(refused, /"placeholder" may not be changed/)
+  // A placeholder nobody wrote, or a state section looked for elsewhere, would pass an unfinished kickoff.
+  assert.match(configProblems(mergeConfig({ placeholder: 'NEVER-PRESENT' })).join(' '), /"placeholder" may not be changed/)
+  assert.match(configProblems(mergeConfig({ state: { file: 'docs/state.md' } })).join(' '), /"state\.file" may not be changed/)
   assert.match(configProblems(mergeConfig({ caps: [{ files: 'docs/**/*.md', maxBytes: 10 }] })).join(' '), /must keep a cap on AGENTS\.md/)
 
   assert.deepEqual(configProblems(DEFAULTS), [])

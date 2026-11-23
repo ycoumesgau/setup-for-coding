@@ -72,7 +72,7 @@ The repository is public and meant to be read: what it says about agents, it app
 
 | Command                           | Purpose                                 |
 | --------------------------------- | --------------------------------------- |
-| `node scripts/verify.mjs`         | Everything CI runs: tests, then hygiene |
+| `node scripts/verify.mjs`         | Everything CI runs: tests, hygiene, memory |
 | `node --test`                     | Tests only                              |
 | `node scripts/public-hygiene.mjs` | The public-hygiene check alone          |
 | `claude plugin validate .`        | The manifests, by the official CLI      |

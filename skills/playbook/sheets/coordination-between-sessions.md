@@ -90,7 +90,7 @@ planner earns its cost.
   shared file. No check refuses an edit to a registry: remove the registry instead.
 - `scripts/agent-memory-check.mjs` caps plan files, so a shared plan cannot become the place
   every session writes.
-- The merge-queue module serializes CI runs on the default branch, so no session has to watch
+- The merge-queue module runs the full level once, in the queue, so no session has to watch
   for another's run.
 
 ## Sources

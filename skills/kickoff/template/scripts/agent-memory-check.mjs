@@ -164,7 +164,12 @@ export const configProblems = (config) => {
   if (!Array.isArray(config.caps) || !config.caps.some((cap) => cap.files === 'AGENTS.md')) {
     problems.push('agent-memory.config.json: "caps" must keep a cap on AGENTS.md.')
   }
-  if (!config.placeholder) problems.push('agent-memory.config.json: "placeholder" may not be emptied.')
+  if (config.placeholder !== DEFAULTS.placeholder) {
+    problems.push('agent-memory.config.json: "placeholder" may not be changed: it is how an unfinished kickoff is refused.')
+  }
+  if (config.state?.file !== DEFAULTS.state.file) {
+    problems.push('agent-memory.config.json: "state.file" may not be changed: the state section lives in AGENTS.md.')
+  }
   return problems
 }
 

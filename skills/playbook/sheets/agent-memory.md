@@ -85,7 +85,7 @@ rule is right: review does.
 
 ## Sources
 
-- Experience: three codebases built by agents, one of them in production (2026).
+- Experience: codebases built by agents, one of them in production (2026).
 - Claude Code documentation, "Memory": a target of under 200 lines per instruction file;
   path-scoped rules; automatic memory is local to a machine.
   <https://code.claude.com/docs/en/memory>

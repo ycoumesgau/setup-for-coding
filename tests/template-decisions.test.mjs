@@ -45,6 +45,27 @@ test('instructions for agents are never content, wherever they sit and however t
   assert.equal(tierOfFile('./docs/plans/active/billing/STATE.md', tiers), 0)
 })
 
+test('content is pages and images under docs/ and README files, not whatever sits there or ends in .md', () => {
+  const expected = {
+    'docs/captures/invoice-390.png': 0,
+    'apps/web/README.md': 0,
+    'CHANGELOG.md': 0,
+    // Code kept under docs/ is code.
+    'docs/site/package.json': 1,
+    'docs/site/next.config.mjs': 1,
+    // A prompt is code: it decides what the product does.
+    'apps/worker/prompts/extract.md': 1,
+    // A decision record is reviewed and merged by a person; the product requirements bind.
+    'docs/adr/2026-01-02-hosting.md': 1,
+    'docs/prd/product.md': 2,
+    // Instructions for agents, whatever tool reads them.
+    'skills/deploy/SKILL.md': 2,
+    '.cursor/rules/api.md': 2,
+    '.agents/skills/x/notes.md': 2,
+  }
+  for (const [file, tier] of Object.entries(expected)) assert.equal(tierOfFile(file, tiers), tier, file)
+})
+
 test('a second pass is asked for authentication, tenancy, billing and migrations, and for nothing else', () => {
   const sensitive = ['apps/api/src/auth/session.ts', 'apps/api/src/tenancy/scope.ts', 'packages/billing/src/ledger.ts', 'apps/api/src/migrations/2026_01_02_invoices.ts']
   assert.deepEqual(tierOf(sensitive, tiers).secondPass, [...sensitive].sort())

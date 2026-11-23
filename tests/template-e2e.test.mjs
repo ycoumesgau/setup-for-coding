@@ -265,7 +265,10 @@ test('the auto-merge workflow is the base branch\'s, checks out nothing of the p
   assert.match(auto, /^  pull_request_target:$/m, 'a pull request must not be able to rewrite the workflow that merges it')
   assert.match(auto, /ref: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/)
   assert.match(auto, /persist-credentials: false/)
-  assert.doesNotMatch(auto, /pull_request\.head\.(ref|repo)/, 'nothing of the pull request is checked out')
+  // The head repository is named once, to refuse forks; it is never what gets checked out.
+  assert.doesNotMatch(auto, /pull_request\.head\.ref/, 'nothing of the pull request is checked out')
+  assert.doesNotMatch(auto, /^\s+(?:ref|repository): .*pull_request\.head/m, 'nothing of the pull request is checked out')
+  assert.equal(auto.match(/pull_request\.head\.repo/g).length, 1)
   assert.match(auto, /pulls\/\$\{PR_NUMBER\}\/files/)
   assert.match(auto, /previous_filename/, 'the old name of a renamed file must count')
   const digest = moduleWorkflow('weekly-digest', 'weekly-digest.yml')
@@ -291,12 +294,12 @@ test('the auto-merge decision, run for real: content arms it, anything else disa
     ['#!/usr/bin/env bash', 'if [ "$1" = api ]; then printf "%s" "$FILES"; else printf "%s\\n" "$*" >> "$CALLS"; fi', ''].join('\n'),
   )
   spawnSync('chmod', ['+x', join(bin, 'gh')])
-  const decide = (files) => {
+  const decide = (files, changedFiles = '2') => {
     writeFileSync(calls, '')
     const result = spawnSync('bash', ['-c', script], {
       cwd: project,
       encoding: 'utf8',
-      env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, CALLS: calls, FILES: files, GH_REPO: 'o/r', PR_NUMBER: '7', PR_URL: 'https://example.com/pull/7', HEAD_SHA: 'abc123' },
+      env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, CALLS: calls, FILES: files, GH_REPO: 'o/r', PR_NUMBER: '7', PR_URL: 'https://example.com/pull/7', HEAD_SHA: 'abc123', CHANGED_FILES: changedFiles },
     })
     assert.equal(result.status, 0, result.stderr)
     return readFileSync(calls, 'utf8').trim()
@@ -305,6 +308,10 @@ test('the auto-merge decision, run for real: content arms it, anything else disa
     assert.equal(decide('docs/a.md\nREADME.md\n'), 'pr merge https://example.com/pull/7 --auto --squash --match-head-commit abc123')
     for (const files of ['docs/a.md\nsrc/total.ts\n', 'docs/a.md\nscripts/verify.mjs\n', 'docs/settings.json\n.claude/settings.json\n', 'apps/api/AGENTS.md\n', '']) {
       assert.equal(decide(files), 'pr merge https://example.com/pull/7 --disable-auto', `armed on: ${JSON.stringify(files)}`)
+    }
+    // The platform lists 3000 files at most: at that size the list is not the change. Unknown counts as too many.
+    for (const count of ['3000', '4200', '']) {
+      assert.equal(decide('docs/a.md\nREADME.md\n', count), 'pr merge https://example.com/pull/7 --disable-auto', `armed at ${count || 'an unknown'} files`)
     }
   } finally {
     rmSync(bin, { recursive: true, force: true })

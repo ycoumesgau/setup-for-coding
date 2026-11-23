@@ -38,4 +38,7 @@ a project's copy can fall behind.
 
 What this does not do: it does not rewrite the project's contract when the template's
 skeleton changes, and it does not add optional modules. For a module, run the kickoff's
-`init.mjs` with `--modules <name>`: it lays what is missing and overwrites nothing.
+`init.mjs` with `--modules <name>`: it lays what is missing and overwrites nothing. A module
+whose file the project already has changes nothing that way: the merge queue ships a
+`.github/workflows/ci.yml`, which is the project's own once laid. Adopt it by hand: read the
+module's file and carry its triggers and its level into yours.

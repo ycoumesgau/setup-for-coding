@@ -12,8 +12,8 @@
  *   - lines written in French.
  *
  * What it does not cover: a private name the deny-list does not hold, an image, the git
- * history. A finding prints the rule and where, never the matched text in full: this output
- * ends up in CI logs.
+ * history. A finding prints the rule and where, never the matched text in full, and nothing
+ * at all of a deny-list term: this output ends up in CI logs.
  *
  * Usage: node scripts/public-hygiene.mjs
  */
@@ -138,11 +138,12 @@ export const findings = (files, { denylist = [], exempt = {} } = {}) => {
         }
       }
       if (!skipped.has('denylist')) {
-        for (const term of denylist) {
+        // The term itself is private: a finding names its rank in the list, never a letter of it.
+        denylist.forEach((term, rank) => {
           if (holdsTerm(line, term)) {
-            found.push({ at, rule: 'denylist', why: 'a term of the private deny-list', shown: mask(term) })
+            found.push({ at, rule: 'denylist', why: 'a term of the private deny-list', shown: `term ${rank + 1} of ${denylist.length}` })
           }
-        }
+        })
       }
       if (!skipped.has('language') && isFrench(line)) {
         found.push({ at, rule: 'language', why: 'a line written in French', shown: mask(line.trim()) })

@@ -25,8 +25,9 @@ const AROUND = [
   // Configuration passed through the environment.
   /\bGIT_CONFIG_(?:COUNT|KEY_\d+|VALUE_\d+|PARAMETERS|GLOBAL|SYSTEM)\b/,
   /\bHUSKY=0\b/,
-  // The hooks folder itself removed, moved or made non-executable from a shell.
-  /\b(?:rm|mv|chmod|truncate|unlink)\b[^\n;&|]*\.githooks\b/,
+  // The hooks folder itself removed, moved, emptied or overwritten from a shell. Editing a
+  // hook as a file, in a visible change, is the way; reading one is allowed.
+  /(?:>|\b(?:rm|mv|cp|chmod|truncate|unlink|tee|ln|install|dd)\b|\bsed\s+-i)[^\n;&|]*\.githooks\b/,
 ]
 
 /** Pointing git at another hooks folder, or at none, skips them just as well. */
@@ -54,8 +55,8 @@ const unquoted = (command) =>
     .replace(/'([^']*)'/g, (whole, inner) => (/^-{1,2}[\w.=-]+$/.test(inner) ? inner : "''"))
     .replace(/"((?:[^"\\]|\\.)*)"/g, (whole, inner) => (/^-{1,2}[\w.=-]+$/.test(inner) ? inner : '""'))
 
-/** A shell given a command as text, or fed one: what it runs is inside the quotes. */
-const RUNS_A_SHELL = /\b(?:bash|sh|zsh|dash|ksh|eval|xargs)\b/
+/** A shell or an interpreter given its code as text, or fed one: what it runs is inside the quotes. */
+const RUNS_A_SHELL = /\b(?:bash|sh|zsh|dash|ksh|eval|xargs)\b|\b(?:node|deno|bun|python3?|perl|ruby|php)\b[^\n;&|]*\s-(?:e|c|p|-eval|-print)\b/
 
 const refuses = (text) => COMMIT.test(text) || OTHERS.test(text) || movesHooks(text) || AROUND.some((pattern) => pattern.test(text))
 
@@ -67,8 +68,8 @@ export const noVerifyRefusal = (command) => {
   const hidden = RUNS_A_SHELL.test(joined) && refuses(joined.replace(/['"]/g, ' '))
   if (refuses(unquoted(joined)) || hidden) {
     return (
-      'Skipping the git hooks is refused. The hook that failed says what to fix, and ' +
-      '`node scripts/verify.mjs` replays it on demand. If the hook itself is wrong, correct it in a visible change.'
+      'Skipping the git hooks is refused, and so is rewriting `.githooks/` from the shell. The hook that failed ' +
+      'says what to fix, and `node scripts/verify.mjs` replays it on demand. If the hook itself is wrong, edit it as a file, in a visible change.'
     )
   }
   return null

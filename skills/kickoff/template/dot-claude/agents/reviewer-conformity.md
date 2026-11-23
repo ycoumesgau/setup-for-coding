@@ -1,6 +1,6 @@
 ---
 name: reviewer-conformity
-description: Fresh-context reviewer of any lot, read-only. Call it before a pull request opens, and again from whoever merges. It judges the lot against the request word for word, the decisions it cites, the contract in AGENTS.md, and the claims of the pull request body. Give it files, never the story of the session - the request verbatim, the pull request body, the diff, the decisions cited. It returns gaps with evidence, not preferences. It writes nothing.
+description: Fresh-context reviewer of any lot, read-only. Call it before a pull request opens, and again from whoever merges when the lot touches authentication, tenancy, billing or a migration. It judges the lot against the request word for word, the decisions it cites, the contract in AGENTS.md, and the claims of the pull request body. Give it files, never the story of the session - the request verbatim, the pull request body, the diff, the decisions cited. It returns gaps with evidence, not preferences. It writes nothing.
 tools: Read, Grep, Glob
 effort: high
 ---

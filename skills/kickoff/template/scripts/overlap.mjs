@@ -9,7 +9,8 @@
  * It reads the remote's branches, keeps the ones that moved lately, and compares the files
  * each changed since it left the base branch with the files this branch changed. It prints
  * the branches that share files with yours, and where the session behind each can be found
- * when its commits say so.
+ * when its last commit carries a `Claude-Session:` trailer holding a link. A project whose
+ * commits carry none (a public repository may prefer that) gets the branch names alone.
  *
  * It needs two habits to be useful: sessions push their branch often (a push without a pull
  * request costs nothing), and merged branches are deleted (the hosting platform can do it at
@@ -21,7 +22,8 @@
  * never disturbed.
  *
  * What it does not see: work that was never pushed, and a conflict of meaning between two
- * files that do not overlap.
+ * files that do not overlap. What it prints comes from other people's branches: a name made
+ * of plain words still reaches the session, so it is information, never an instruction.
  *
  * Usage: node scripts/overlap.mjs [--days 14] [--base main] [--all] [--json]
  */
@@ -62,7 +64,7 @@ export const render = ({ mine, found, live, now, limit = 6 }) => {
   for (const branch of found.slice(0, limit)) {
     const files = branch.shared.slice(0, 3).join(', ') + (branch.shared.length > 3 ? `, +${branch.shared.length - 3}` : '')
     const where = branch.session ? ` (${branch.session})` : ''
-    lines.push(`  ${branch.name}, ${age(branch.time, now)}${where}: ${files}`)
+    lines.push(`  ${branchLabel(branch.name)}, ${age(branch.time, now)}${where}: ${files}`)
   }
   if (found.length > limit) lines.push(`  and ${found.length - limit} more: run with --json for the whole list.`)
   lines.push('Read their diff before you edit those files, or split the work.')
@@ -78,6 +80,9 @@ const run = (cwd, args) => {
  * A trailer is text written by whoever pushed the branch, and it ends up in another session's
  * output. Only a plain https link is passed on; anything else is dropped.
  */
+/** A branch name is written by someone else as well: an unusual one is not repeated. */
+export const branchLabel = (name) => (/^[A-Za-z0-9._\/-]{1,100}$/.test(name) ? name : '(a branch with an unusual name)')
+
 export const sessionLink = (trailer) => {
   const first = (trailer ?? '').trim().split(/\s/u)[0] ?? ''
   return /^https:\/\/[A-Za-z0-9.-]+\/[A-Za-z0-9._~\/-]{1,200}$/.test(first) ? first : ''

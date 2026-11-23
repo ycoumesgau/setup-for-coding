@@ -52,9 +52,10 @@ gathered by a weekly digest. Repository issues with two labels, `decide` and `ow
 issue templates; on Linear, the same two labels on one team; on Jira, two issue types or two
 labels. Keep the fields identical whatever the tool, and reach it through its official MCP
 server, so changing tracker changes nothing in the method. Risk tiers from paths: tier 0
-(content) merges on green CI and one fresh-context review, tier 1 (code) on review, tier 2
-(the project's checks, CI and contract, and authentication, tenancy, billing, migrations) is
-merged by the owner; the last four also get a second review pass. A
+(pages and images under `docs/`, README files) merges on green CI and one fresh-context
+review, tier 1 (code, decision records) on review, tier 2 (the project's checks, CI, contract,
+agent instructions and product requirements, and authentication, tenancy, billing,
+migrations) is merged by the owner; the last four also get a second review pass. A
 specification is implemented as written; a simpler version "for now" is a decision on the
 closed list, asked like any other. The list stops fitting when the product adds a regulated
 duty or an external design process: add the item, and keep the list closed.

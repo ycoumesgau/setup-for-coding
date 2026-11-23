@@ -7,16 +7,37 @@
         "CLAUDE.md",
         "**/AGENTS.md",
         "**/CLAUDE.md",
+        "**/SKILL.md",
         ".claude/**",
+        ".cursor/**",
+        ".agents/**",
         ".github/**",
         ".githooks/**",
         "scripts/**",
         "verify.config.json",
         "risk-tiers.json",
-        "agent-memory.config.json"
+        "agent-memory.config.json",
+        "docs/prd/**"
       ]
     },
-    { "tier": 0, "paths": ["docs/**", "**/*.md"] },
+    {
+      "tier": 1,
+      "paths": [
+        "docs/adr/**"
+      ]
+    },
+    {
+      "tier": 0,
+      "paths": [
+        "docs/**/*.md",
+        "docs/**/*.png",
+        "docs/**/*.jpg",
+        "docs/**/*.webp",
+        "README.md",
+        "**/README.md",
+        "CHANGELOG.md"
+      ]
+    },
     {
       "tier": 2,
       "secondPass": true,
@@ -33,8 +54,8 @@
   ],
   "default": 1,
   "tiers": {
-    "0": "content only. Merges once CI is green and one fresh-context review found nothing blocking.",
-    "1": "ordinary code. Reviewed with fresh context, merged by whoever holds the merge.",
-    "2": "the project's own checks, CI and contract, or authentication, tenancy, billing and migrations. The owner merges."
+    "0": "content only: pages and images under docs/, and README files. Merges once CI is green and one fresh-context review found nothing blocking.",
+    "1": "ordinary code, and decision records. Reviewed with fresh context, merged by whoever holds the merge.",
+    "2": "what binds the project (its checks, CI, contract, instructions for agents and product requirements), or authentication, tenancy, billing and migrations. The owner merges."
   }
 }

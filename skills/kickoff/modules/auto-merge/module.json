@@ -5,6 +5,7 @@
   "limits": [
     "The tier is computed by the base branch's workflow, script and rules: a pull request can change none of them for itself.",
     "Each push decides again, and a pull request that stops being content-only is disarmed; the merge is tied to the commit that was judged.",
+    "A pull request from a fork is never armed, nor one of 3000 files or more, whose list the platform truncates.",
     "It does not know whether a review ran: the pull request body says so, and the owner trusts or samples it.",
     "It needs auto-merge allowed in the repository settings, and Verify required on the default branch; without a required check it would merge at once.",
     "Not exercised on a real repository by this plugin's tests: they run its decision with a stand-in for the hosting platform's command line."

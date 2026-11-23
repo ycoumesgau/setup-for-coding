@@ -14,7 +14,8 @@ permissions:
 jobs:
   tier:
     name: Tier 0 merges itself
-    if: github.event.pull_request.draft == false
+    # Never a fork: an outside contributor's pull request is merged by a person.
+    if: github.event.pull_request.draft == false && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     env:
@@ -23,6 +24,7 @@ jobs:
       PR_URL: ${{ github.event.pull_request.html_url }}
       PR_NUMBER: ${{ github.event.pull_request.number }}
       HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      CHANGED_FILES: ${{ github.event.pull_request.changed_files }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -34,10 +36,12 @@ jobs:
       # Both names of a renamed file count: moving a check out of its folder is not content.
       # Each push decides again: a pull request armed while it was content is disarmed the
       # moment it touches anything else, and the merge is tied to the commit that was judged.
+      # The files request lists 3000 files at most: beyond, the list is not the change, and a
+      # person merges.
       - run: |
           gh api "repos/${GH_REPO}/pulls/${PR_NUMBER}/files" --paginate \
             --jq '.[] | .filename, (.previous_filename // empty)' > changed.txt
-          if [ -s changed.txt ] && node scripts/risk-tier.mjs --stdin --max 0 < changed.txt; then
+          if [ "${CHANGED_FILES:-3000}" -lt 3000 ] && [ -s changed.txt ] && node scripts/risk-tier.mjs --stdin --max 0 < changed.txt; then
             gh pr merge "$PR_URL" --auto --squash --match-head-commit "$HEAD_SHA"
           else
             gh pr merge "$PR_URL" --disable-auto || true

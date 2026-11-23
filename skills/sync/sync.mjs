@@ -13,6 +13,7 @@
  * Usage: node sync.mjs --target <repository>            report; exit 1 if anything differs
  *        node sync.mjs --target <repository> --apply    write the template's version
  */
+import { spawnSync } from 'node:child_process'
 import { chmodSync, copyFileSync, existsSync, mkdirSync, readFileSync, statSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -84,6 +85,13 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   for (const row of rows) if (row.state !== 'same' && row.state !== 'project-owned') process.stdout.write(`${row.state}: ${row.path}\n`)
 
   if (process.argv.includes('--apply')) {
+    // A file about to be replaced that holds uncommitted edits would lose them for good.
+    const replaced = todo.filter((row) => row.state === 'differs').map((row) => row.path)
+    const dirty = replaced.length === 0 ? '' : (spawnSync('git', ['status', '--porcelain', '--', ...replaced], { cwd: target, encoding: 'utf8' }).stdout ?? '').trim()
+    if (dirty) {
+      process.stderr.write(`These files hold uncommitted changes and would be overwritten. Commit or stash them first:\n${dirty}\n`)
+      process.exit(2)
+    }
     for (const row of todo) {
       // A file the project owns is created when missing, as at kickoff, but with its placeholders: fill them.
       const { from, root } = files.find((file) => file.to === row.path)

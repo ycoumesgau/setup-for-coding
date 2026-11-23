@@ -10,7 +10,7 @@ import { dirname, join } from 'node:path'
 import { after, before, test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 
-import { hotFiles, overlaps, render, sessionLink } from '../skills/kickoff/template/scripts/overlap.mjs'
+import { branchLabel, hotFiles, overlaps, render, sessionLink } from '../skills/kickoff/template/scripts/overlap.mjs'
 
 const script = join(dirname(fileURLToPath(import.meta.url)), '..', 'skills/kickoff/template/scripts/overlap.mjs')
 
@@ -53,6 +53,13 @@ test('the alert stays a few lines long, however many branches overlap', () => {
   assert.match(lines[7], /and 3 more/)
   assert.deepEqual(render({ mine: [], found: [], live: 3, now }), ['overlap: this branch has changed no file yet.'])
   assert.match(render({ mine: ['a.ts'], found: [], live: 3, now })[0], /none of the 3 other live branch/)
+})
+
+test('a branch with an unusual name is listed without repeating the name', () => {
+  assert.equal(branchLabel('feat/billing-v2.1_fix'), 'feat/billing-v2.1_fix')
+  for (const name of ['feat/$(curl-x)', 'a`b`', 'x'.repeat(101), 'été', 'a"b']) assert.equal(branchLabel(name), '(a branch with an unusual name)', name)
+  const lines = render({ mine: ['a.ts'], found: [{ name: 'run/$(this)', time: 0, session: '', shared: ['a.ts'] }], live: 1, now: 3600 })
+  assert.doesNotMatch(lines.join('\n'), /\$\(/)
 })
 
 test('only a plain https link is passed on from a commit trailer', () => {

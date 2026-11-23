@@ -108,10 +108,25 @@ test('the required check always runs: skipped, it would count as passed', () => 
     assert.match(verify, /^    name: Verify$/m, path)
     assert.match(verify, /^    if: always\(\)$/m, path)
     assert.match(verify, /test "\$RESULT" = success/, path)
+    // Reading another job's result would pass the check while every group fails.
+    assert.match(verify, /^    needs: run$/m, path)
+    assert.match(verify, /^      RESULT: \$\{\{ needs\.run\.result \}\}$/m, path)
   }
 })
 
 test('every workflow states the permissions it needs, and CI needs only to read', () => {
   for (const path of workflows) assert.match(text(path), /^permissions:\n/m, `${path} inherits the default permissions`)
   for (const path of workflows.slice(0, 3)) assert.match(text(path), /^permissions:\n  contents: read\n\n/m, path)
+})
+
+test('the two workflows that write hold exactly the permissions they use', () => {
+  const block = (path) => text(path).match(/^permissions:\n((?:  .+\n)+)/m)[1]
+  assert.equal(block(workflows[3]), '  contents: read\n  pull-requests: read\n  issues: write\n')
+  assert.equal(block(workflows[4]), '  contents: write\n  pull-requests: write\n')
+})
+
+test('auto-merge is never armed on a draft nor on a pull request from a fork', () => {
+  const guard = text(workflows[4]).match(/^    if: (.+)$/m)[1]
+  assert.match(guard, /github\.event\.pull_request\.draft == false/)
+  assert.match(guard, /github\.event\.pull_request\.head\.repo\.full_name == github\.repository/)
 })

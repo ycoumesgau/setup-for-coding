@@ -37,6 +37,21 @@ test('the same bypass under another spelling is refused too', () => {
   refused('rm .githooks/pre-push && git push')
   refused('chmod -x .githooks/pre-push; git push')
   refused('mv .githooks .githooks.off && git push')
+  refused('truncate -s 0 .githooks/pre-push')
+  refused('echo "exit 0" > .githooks/pre-push && git push')
+  refused('cp /dev/null .githooks/pre-push')
+  refused('sed -i d .githooks/pre-push')
+  refused(`node -e "require('child_process').execSync('git push --no-verify')"`)
+  refused(`python3 -c "import subprocess; subprocess.run(['git', 'push', '--no-verify'])"`)
+})
+
+test('reading a hook, or naming the option in a message, is not skipping it', () => {
+  allowed('cat .githooks/pre-push')
+  allowed('sed -n 1,5p .githooks/pre-push')
+  allowed('ls -la .githooks')
+  allowed('git diff > /tmp/out.txt; cat .githooks/pre-push')
+  allowed('node --test && git commit -m "the hook refuses --no-verify"')
+  allowed('node scripts/verify.mjs && git push origin main')
 })
 
 test('ordinary git commands pass', () => {
