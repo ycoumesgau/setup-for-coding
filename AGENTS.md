@@ -12,8 +12,9 @@ Replaced, never extended.
   template with its checks, reviewers and CI (`skills/kickoff/template/`), the overlap map,
   the risk tiers and four optional modules (`skills/kickoff/modules/`).
 - Skills: `kickoff` (start a project), `sync` (bring a project level with the template) and
-  `playbook` (format and one sheet). Next: the rest of the playbook, then an eval suite that
-  runs a kickoff with a real agent.
+  `playbook` (24 decision sheets in four groups, each under 8 KB, in one format).
+- Next: an eval suite that runs a kickoff with a real agent, then the README and the method
+  notes.
 
 ## 1. What this is
 
