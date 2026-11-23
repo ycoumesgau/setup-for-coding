@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
@@ -36,4 +36,38 @@ test('CI runs the command a session runs, and only that', () => {
     .map((line) => line.trim())
     .filter((line) => line.startsWith('run:') || line.startsWith('- run:'))
   assert.deepEqual(runs, ['- run: node scripts/verify.mjs'])
+})
+
+const skills = readdirSync(join(root, 'skills'), { withFileTypes: true })
+  .filter((entry) => entry.isDirectory())
+  .map((entry) => entry.name)
+
+test('every skill declares its name and a description the listing will not cut', () => {
+  assert.deepEqual(skills.sort(), ['kickoff', 'playbook', 'sync'])
+  for (const name of skills) {
+    const front = text(`skills/${name}/SKILL.md`).match(/^---\n([\s\S]*?)\n---\n/)?.[1] ?? ''
+    assert.match(front, new RegExp(`^name: ${name}$`, 'm'), `${name}: the name must be the folder's`)
+    const description = front.match(/^description: (.+)$/m)?.[1] ?? ''
+    assert.ok(description.length > 80, `${name}: the description does not say when to use it`)
+    assert.ok(description.length <= 1_536, `${name}: the description is ${description.length} characters`)
+  }
+})
+
+test('a skill that writes into a repository is run by a person, never picked by the model', () => {
+  for (const name of ['kickoff', 'sync']) {
+    assert.match(text(`skills/${name}/SKILL.md`), /^disable-model-invocation: true$/m, name)
+  }
+  assert.doesNotMatch(text('skills/playbook/SKILL.md'), /^disable-model-invocation:/m)
+})
+
+test('the scripts a skill tells the session to run are in the skill', () => {
+  for (const name of skills) {
+    const called = [...text(`skills/${name}/SKILL.md`).matchAll(/\$\{CLAUDE_SKILL_DIR\}\/([\w.-]+)/g)].map((match) => match[1])
+    for (const file of called) assert.ok(existsSync(join(root, 'skills', name, file)), `${name} calls ${file}, which it does not ship`)
+  }
+})
+
+test('the plugin imposes no hook and no server on the projects that install it', () => {
+  // Hooks and reviewers reach a project through its own files, where it can read and change them.
+  for (const path of ['hooks/hooks.json', '.mcp.json', 'agents']) assert.equal(existsSync(join(root, path)), false, path)
 })

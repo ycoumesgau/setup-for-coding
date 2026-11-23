@@ -11,8 +11,9 @@ Replaced, never extended.
 - In place: the plugin manifest, this contract, the public-hygiene check, the project
   template with its checks, reviewers and CI (`skills/kickoff/template/`), the overlap map,
   the risk tiers and four optional modules (`skills/kickoff/modules/`).
-- The playbook skill has its format and one sheet. Next: the kickoff and sync skills, then
-  the rest of the playbook.
+- Skills: `kickoff` (start a project), `sync` (bring a project level with the template) and
+  `playbook` (format and one sheet). Next: the rest of the playbook, then an eval suite that
+  runs a kickoff with a real agent.
 
 ## 1. What this is
 
@@ -70,3 +71,4 @@ The repository is public and meant to be read: what it says about agents, it app
 | `node scripts/verify.mjs`         | Everything CI runs: tests, then hygiene |
 | `node --test`                     | Tests only                              |
 | `node scripts/public-hygiene.mjs` | The public-hygiene check alone          |
+| `claude plugin validate .`        | The manifests, by the official CLI      |

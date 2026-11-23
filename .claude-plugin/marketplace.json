@@ -1,6 +1,9 @@
 {
   "name": "setup-for-coding",
-  "owner": { "name": "Yoann Coumes-Gauchet" },
+  "description": "One plugin: the working contract, checks, reviewers and decision sheets for projects built by coding agents.",
+  "owner": {
+    "name": "Yoann Coumes-Gauchet"
+  },
   "plugins": [
     {
       "name": "setup",
