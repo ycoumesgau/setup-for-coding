@@ -16,8 +16,7 @@ Replaced, never extended.
 - The README and `docs/method.md` say why it is shaped this way and what is not proved.
 - `evals/` holds three cases for `claude plugin eval`; `evals/README.md` says which were
   seen passing and which were not.
-- Next: see the two kickoff cases pass under the eval harness, and run a kickoff on a
-  second kind of product.
+- Next: see the two kickoff cases pass under the eval harness, more than once each.
 
 ## 1. What this is
 

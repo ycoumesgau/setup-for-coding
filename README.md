@@ -115,8 +115,9 @@ another's. The sheets say when a project should build such a thing for itself.
 
 - Loading through an account-level installation was not exercised for this plugin. Its
   manifests pass the official validator, and its skills load from a directory.
-- A kickoff was run from start to end by a real agent once, on one kind of product. The eval
-  cases under `evals/` are the way to run it again; they were not all run here.
+- A kickoff was run from start to end by a real agent twice, once each on two kinds of
+  product, outside the eval harness. [evals/README.md](evals/README.md) says what was seen
+  and what was not; one run per case says nothing about how often it succeeds.
 - The workflows of the optional modules were checked for their shape, not run on a real
   repository.
 - The sheets carry lived experience from a handful of projects by one person. They are a

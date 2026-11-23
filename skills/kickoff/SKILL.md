@@ -8,7 +8,7 @@ argument-hint: '[project name]'
 # Kickoff
 
 You are starting a project. At the end of this procedure the repository holds a contract
-every agent session loads, checks that hold it, three reviewers, a CI that confirms what a
+every agent session loads, checks that hold it, two reviewers, a CI that confirms what a
 session already ran, and the first decisions written down with their reasons. Nothing of the
 product is built yet: the point is that whatever is built next is built under rules.
 

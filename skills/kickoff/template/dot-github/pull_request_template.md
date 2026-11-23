@@ -9,7 +9,8 @@
 
 ## Risk tier
 
-<!-- The output of `node scripts/risk-tier.mjs`. Tier 2 gets a second review pass and the owner merges. -->
+<!-- The output of `node scripts/risk-tier.mjs`. The owner merges tier 2. The files it lists
+     for a second pass get one by someone who did not write them. -->
 
 ## Proof
 

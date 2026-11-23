@@ -34,8 +34,7 @@ a project's copy can fall behind.
 4. Read `git diff`. Run `node scripts/verify.mjs --full`. A check that changed must be seen
    red once in this project before it is trusted here.
 
-5. Open a pull request. Tooling is tier 2: it gets a second review pass, and the owner
-   merges.
+5. Open a pull request. Tooling is tier 2: the owner merges.
 
 What this does not do: it does not rewrite the project's contract when the template's
 skeleton changes, and it does not add optional modules. For a module, run the kickoff's
