@@ -1,0 +1,34 @@
+name: Auto-merge tier 0
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  tier:
+    name: Tier 0 merges itself
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PR_URL: ${{ github.event.pull_request.html_url }}
+    steps:
+      # The rules and the script of the BASE branch: a pull request cannot lower its own tier.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: |
+          gh pr diff "$PR_URL" --name-only > changed.txt
+          if node scripts/risk-tier.mjs --stdin --max 0 < changed.txt; then
+            gh pr merge "$PR_URL" --auto --squash
+          else
+            echo "Above tier 0: a person merges."
+          fi

@@ -8,10 +8,11 @@ enforces says so.
 
 Replaced, never extended.
 
-- In place: the plugin manifest, this contract, the public-hygiene check, and the project
-  template with its checks, reviewers and CI (`skills/kickoff/template/`).
-- The plugin ships no skill yet. Next: coordination and decision tooling, the kickoff and sync
-  skills, then the playbook.
+- In place: the plugin manifest, this contract, the public-hygiene check, the project
+  template with its checks, reviewers and CI (`skills/kickoff/template/`), the overlap map,
+  the risk tiers and four optional modules (`skills/kickoff/modules/`).
+- The playbook skill has its format and one sheet. Next: the kickoff and sync skills, then
+  the rest of the playbook.
 
 ## 1. What this is
 

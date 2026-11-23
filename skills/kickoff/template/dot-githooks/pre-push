@@ -1,3 +1,5 @@
 #!/bin/sh
 # What CI would run first on this change, so that a red is found here and not there.
-exec node scripts/verify.mjs
+node scripts/verify.mjs || exit 1
+# Then, for information only: who else is touching the files this branch changed.
+node scripts/overlap.mjs 2>/dev/null || true

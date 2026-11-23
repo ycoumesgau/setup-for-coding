@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { after, before, test } from 'node:test'
 
-import { fill, lay, targetPath, templateFiles } from '../skills/kickoff/init.mjs'
+import { fill, kickoff, lay, targetPath, templateFiles } from '../skills/kickoff/init.mjs'
 
 let project
 
@@ -55,6 +55,11 @@ test('the project receives its contract, its checks, its reviewers and its CI', 
     'scripts/agent-memory-check.mjs',
     'scripts/hooks/no-verify.mjs',
     'scripts/hooks/session-start.mjs',
+    'scripts/overlap.mjs',
+    'scripts/risk-tier.mjs',
+    'risk-tiers.json',
+    '.github/ISSUE_TEMPLATE/decide.md',
+    '.github/ISSUE_TEMPLATE/owed.md',
     'verify.config.json',
     'docs/adr/README.md',
     'docs/plans/README.md',
@@ -163,7 +168,9 @@ test('the project CI runs the full level of the same command, and nothing else',
     .map((line) => line.trim())
     .filter((line) => line.startsWith('- run:'))
   assert.deepEqual(runs, ['- run: node scripts/verify.mjs --full'])
-  assert.match(read('.githooks/pre-push'), /exec node scripts\/verify\.mjs\n/)
+  assert.match(read('.githooks/pre-push'), /^node scripts\/verify\.mjs \|\| exit 1$/m)
+  // The overlap map informs; it must never be what stops a push.
+  assert.match(read('.githooks/pre-push'), /^node scripts\/overlap\.mjs 2>\/dev\/null \|\| true$/m)
 })
 
 test('each reviewer declares its tools, and only the risk reviewer may execute', () => {
@@ -172,4 +179,78 @@ test('each reviewer declares its tools, and only the risk reviewer may execute',
   assert.equal(tools('reviewer-prototype'), 'Read, Grep, Glob')
   assert.equal(tools('reviewer-risk'), 'Read, Grep, Glob, Bash')
   assert.match(read('.claude/agents/reviewer-risk.md'), /^disallowedTools: WebFetch, WebSearch$/m)
+})
+
+test('the tier of a change is computed in the project, from what its branch touched', () => {
+  finishKickoff()
+  const commit = (message) => {
+    sh('git', ['add', '-A'])
+    const done = sh('git', ['-c', 'user.name=Test', '-c', 'user.email=test@example.com', '-c', 'commit.gpgsign=false', 'commit', '--quiet', '-m', message])
+    assert.equal(done.status, 0, done.stderr)
+  }
+  commit('kickoff')
+  sh('git', ['checkout', '--quiet', '-b', 'feature'])
+
+  sh('mkdir', ['-p', 'docs/plans/active/billing', 'src'])
+  write('docs/plans/active/billing/STATE.md', 'Where we are.\n')
+  commit('docs: plan')
+  const content = node(['scripts/risk-tier.mjs', '--base', 'main', '--max', '0'])
+  assert.equal(content.status, 0, content.stderr)
+  assert.match(content.stdout, /^risk tier 0: content only/)
+
+  write('src/total.ts', 'export const total = 1\n')
+  commit('feat: total')
+  const code = node(['scripts/risk-tier.mjs', '--base', 'main', '--max', '0'])
+  assert.equal(code.status, 1, 'ordinary code must not pass as tier 0')
+  assert.match(code.stdout, /^risk tier 1: [\s\S]*set by: src\/total\.ts/)
+
+  write('verify.config.json', read('verify.config.json'))
+  write('scripts/verify.mjs', `${read('scripts/verify.mjs')}\n`)
+  commit('chore: touch the check')
+  assert.match(node(['scripts/risk-tier.mjs', '--base', 'main']).stdout, /^risk tier 2: [\s\S]*set by: scripts\/verify\.mjs/)
+
+  const piped = node(['scripts/risk-tier.mjs', '--stdin', '--json'], { input: 'docs/a.md\nAGENTS.md\n' })
+  assert.deepEqual(JSON.parse(piped.stdout), { tier: 2, setBy: ['AGENTS.md'], files: 2 })
+  sh('git', ['checkout', '--quiet', 'main'])
+})
+
+test('a kickoff with modules lays their files first and wires their checks', () => {
+  const other = mkdtempSync(join(tmpdir(), 'kickoff-modules-'))
+  try {
+    spawnSync('git', ['init', '--quiet', '--initial-branch=main'], { cwd: other })
+    const { written } = kickoff({ target: other, values: { PROJECT_NAME: 'Orchard' }, chosen: ['merge-queue', 'dated-exceptions'] })
+    const at = (path) => readFileSync(join(other, path), 'utf8')
+
+    assert.equal(written.filter((path) => path === '.github/workflows/ci.yml').length, 1, 'ci.yml laid twice')
+    assert.match(at('.github/workflows/ci.yml'), /^\s+merge_group:$/m)
+    assert.match(at('.github/workflows/ci.yml'), /github\.event_name != 'pull_request' && '--full' \|\| ''/)
+    assert.deepEqual(JSON.parse(at('verify.config.json')).fast.map((step) => step.name), ['agent memory', 'dated exceptions'])
+
+    writeFileSync(join(other, 'AGENTS.md'), at('AGENTS.md').replaceAll('TODO(kickoff)', 'Decided at kickoff'))
+    const run = (args) => spawnSync(process.execPath, args, { cwd: other, encoding: 'utf8' })
+    assert.equal(run(['scripts/verify.mjs']).status, 0)
+
+    const expired = [{ rule: 'no real data in a bench', reason: 'one measurement', owner: 'the owner', expires: '2020-01-01', removal: 'the bench flag' }]
+    writeFileSync(join(other, 'exceptions.json'), JSON.stringify(expired))
+    const red = run(['scripts/verify.mjs'])
+    assert.equal(red.status, 1, 'an expired exception must stop the push')
+    assert.match(red.stderr, /expired on 2020-01-01/)
+  } finally {
+    rmSync(other, { recursive: true, force: true })
+  }
+  assert.throws(() => kickoff({ target: project, values: { PROJECT_NAME: 'x' }, chosen: ['time-travel'] }), /unknown module\(s\): time-travel/)
+})
+
+test('a module workflow that writes to the repository says why, and reads pull request text as data', () => {
+  const workflow = (name, file) => readFileSync(new URL(`../skills/kickoff/modules/${name}/files/dot-github/workflows/${file}`, import.meta.url), 'utf8')
+  const auto = workflow('auto-merge', 'auto-merge.yml')
+  assert.match(auto, /ref: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/, 'the tier must be computed with the base branch rules')
+  assert.doesNotMatch(auto, /pull_request_target/)
+  const digest = workflow('weekly-digest', 'weekly-digest.yml')
+  assert.match(digest, /--body-file digest\.md/)
+  for (const text of [auto, digest]) {
+    // Titles and bodies never reach a shell line: only through files or environment variables.
+    assert.doesNotMatch(text, /run:[^\n]*\$\{\{ *github\.event\.pull_request\.(title|body)/)
+    assert.doesNotMatch(text, /\$\{\{ *github\.event\.pull_request\.(title|body) *\}\}/)
+  }
 })

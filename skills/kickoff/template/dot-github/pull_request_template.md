@@ -7,6 +7,10 @@
 <!-- One line each: the decision, because its reason. Write "none" when there is none.
      A point of the closed list (AGENTS.md, section 6) is asked before the code, not recorded here. -->
 
+## Risk tier
+
+<!-- The output of `node scripts/risk-tier.mjs`. Tier 2 gets a second review pass and the owner merges. -->
+
 ## Proof
 
 - Verify, and where it ran (session, CI):

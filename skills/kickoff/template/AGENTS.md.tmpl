@@ -61,8 +61,16 @@ Rules every project starts with:
   pull request opens. CI runs the same command: it confirms, it does not discover. A red found
   in CI that the session could have seen is a defect of the session.
 - **One task, one session, one branch, one pull request.** Lots of the same request are
-  commits on one branch. Push a branch often: it costs nothing without a pull request. Open
-  the pull request when the work is finished, and push to it only a grouped fix.
+  commits on one branch. Push a branch often: it costs nothing without a pull request, and it
+  is how other sessions learn what you are touching. Open the pull request when the work is
+  finished, and push to it only a grouped fix.
+- **Other sessions are working here too.** `node scripts/overlap.mjs` lists the live branches
+  that changed the files you changed; the pre-push hook prints it. Read their diff before you
+  edit a shared file, or split the work. Do not add to a file every branch appends to: write
+  a file of your own.
+- **The care a change needs is computed**, not felt: `node scripts/risk-tier.mjs`. Tier 0
+  (content) merges on green CI and one review; tier 2 (checks, CI, access, money, schema) gets
+  a second review pass and the owner merges.
 - **A check is believed only after it was seen red.** A pull request names the mutation that
   turned each new check red. After a mutation that stayed green, find which other check
   caught the case, or write the one that does.
@@ -92,4 +100,6 @@ Rules every project starts with:
 | `node scripts/verify.mjs`             | The fast level: what every push needs                |
 | `node scripts/verify.mjs --full`      | Everything CI runs                                   |
 | `node scripts/agent-memory-check.mjs` | The size and content of what agents load             |
+| `node scripts/overlap.mjs`            | The live branches that touch the files you changed   |
+| `node scripts/risk-tier.mjs`          | The tier of this change, from the files it touches   |
 | TODO(kickoff)                         | Dev server, tests, migrations, generated files       |

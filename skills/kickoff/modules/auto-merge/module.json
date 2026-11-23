@@ -1,0 +1,11 @@
+{
+  "name": "auto-merge",
+  "trigger": "The owner has decided that content-only changes need no human merge, and the default branch is protected with Verify as a required check.",
+  "adds": "A workflow that asks the hosting platform to merge a pull request by itself once its checks pass, when every file it touches is tier 0.",
+  "limits": [
+    "The tier is computed with the rules of the base branch, so that a pull request cannot lower its own tier.",
+    "It does not know whether a review ran: the pull request body says so, and the owner trusts or samples it.",
+    "It needs auto-merge allowed in the repository settings, and branch protection; without a required check it would merge at once.",
+    "Not exercised on a real repository by this plugin's tests: they check the tier computation and the workflow's shape."
+  ]
+}
