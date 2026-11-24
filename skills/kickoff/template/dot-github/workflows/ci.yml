@@ -1,0 +1,64 @@
+name: CI
+
+# A pull request is where a change is verified. Nothing runs after the merge: when a merge is
+# a release, a failure found then is found in production.
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+# A newer push replaces the run of an older one on the same pull request.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  groups:
+    name: Groups
+    # A named image, not a moving label: the day "latest" changes, every job changes with it.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      list: ${{ steps.list.outputs.list }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - id: list
+        run: echo "list=$(node scripts/verify.mjs --full --list-groups)" >> "$GITHUB_OUTPUT"
+
+  run:
+    # One job per group of `verify.config.json`, side by side.
+    name: ${{ matrix.group }}
+    needs: groups
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        group: ${{ fromJson(needs.groups.outputs.list) }}
+    env:
+      GROUP: ${{ matrix.group }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # Kickoff: install the project's toolchain and dependencies here, pinned.
+      # The same command a session runs before opening the pull request.
+      - run: node scripts/verify.mjs --full --group "$GROUP"
+
+  verify:
+    # The one check to require on the default branch. It always runs: a required check that
+    # is skipped counts as passed.
+    name: Verify
+    if: always()
+    needs: run
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      RESULT: ${{ needs.run.result }}
+    steps:
+      - run: test "$RESULT" = success

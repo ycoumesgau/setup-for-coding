@@ -1,0 +1,17 @@
+{
+  "fast": [
+    { "name": "tests", "run": "node --test" },
+    { "name": "public hygiene", "run": "node scripts/public-hygiene.mjs" },
+    { "name": "agent memory", "run": "node skills/kickoff/template/scripts/agent-memory-check.mjs" }
+  ],
+  "full": [],
+  "fastBudgetSeconds": 120,
+  "notCovered": {
+    "fast": [
+      "whether the plugin loads in a session",
+      "private names when HYGIENE_DENYLIST is not set",
+      "a kickoff run by an agent from start to end"
+    ],
+    "full": ["the same: this repository has one level"]
+  }
+}

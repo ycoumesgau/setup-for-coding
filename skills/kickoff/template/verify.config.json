@@ -1,0 +1,9 @@
+{
+  "fast": [{ "name": "agent memory", "run": "node scripts/agent-memory-check.mjs" }],
+  "full": [],
+  "fastBudgetSeconds": 300,
+  "notCovered": {
+    "fast": ["everything the project has not declared yet: format, lint, types, tests, a secret scanner"],
+    "full": ["everything the project has not declared yet: database, browser, build"]
+  }
+}

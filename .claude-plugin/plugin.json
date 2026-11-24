@@ -1,0 +1,8 @@
+{
+  "name": "setup",
+  "description": "Start and run software projects built by coding agents: the working contract, the guards that keep it honest, and the knowledge to make the first decisions.",
+  "author": { "name": "Yoann Coumes-Gauchet" },
+  "homepage": "https://github.com/ycoumesgau/setup-for-coding",
+  "repository": "https://github.com/ycoumesgau/setup-for-coding",
+  "license": "MIT"
+}

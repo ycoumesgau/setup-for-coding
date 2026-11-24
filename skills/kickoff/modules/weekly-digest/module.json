@@ -1,0 +1,10 @@
+{
+  "name": "weekly-digest",
+  "trigger": "More merged pull requests in a week than the owner reads one by one, or several people merging.",
+  "adds": "A weekly issue that gathers the Decisions section of every pull request merged that week, so that decisions are read in one sitting instead of approved one by one.",
+  "limits": [
+    "It reads what sessions wrote: a decision that was taken and not written is not in it.",
+    "It needs a label named digest in the repository.",
+    "Not exercised on a real repository by this plugin's tests: they check the text it builds, not the workflow."
+  ]
+}

@@ -1,0 +1,76 @@
+schema_version: "1.1"
+name: kickoff-saas
+description: A kickoff from an empty repository for a multi-tenant product with sensitive data, the owner's answers given up front.
+tags: [kickoff]
+runs: 1
+expected_outcome: >
+  The repository holds the contract with no placeholder left, its checks, its reviewers, at
+  least one decision record, a first plan state, and verify is green. The final message lists
+  what only the owner can do.
+execution:
+  max_turns: 90
+  timeout_seconds: 2400
+  allowed_tools: [Read, Glob, Grep, Skill]
+  prompt: |
+    /setup:kickoff Orchard
+
+    I am the owner. My answers to your interview, so that you do not have to ask:
+
+    1. Product: Orchard. It prepares a regulated document from the files a small professional
+       firm uploads, and a qualified person signs it. Multi-tenant, sold to businesses.
+    2. Data: client files of the firms, with names of private persons. Hosted in the EU.
+       Model inference must run in the EU as well.
+    3. Surfaces at the start: the customer app and a background worker. No public site, no
+       mobile app yet.
+    4. Stack: a TypeScript web framework with a managed Postgres in the EU, and a worker in
+       Python. Choose the rest and tell me why; I will accept your defaults for now.
+    5. Design: a prototype tool, nothing drawn yet.
+    6. Languages: the repository is written in English, the interface in French.
+    7. Tracker: the repository's issues.
+    8. Merging: I merge. A merge deploys to production. Content-only changes may merge by
+       themselves once CI is green.
+
+    There is no product code yet and you must not write any: finish the kickoff, commit on a
+    branch, and do not open a pull request (there is no remote). End with the list of what
+    only I can do.
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: template-laid-by-the-installer
+    type: tool_used
+    tool: Bash
+    input_match: "init\\.mjs"
+  - name: verify-was-run
+    type: tool_used
+    tool: Bash
+    input_match: "verify\\.mjs"
+  - name: contract-names-the-project
+    type: regex
+    target: { source: file, path: AGENTS.md }
+    pattern: "^# AGENTS\\.md — Orchard"
+    flags: m
+  - name: no-placeholder-left
+    type: regex
+    target: { source: file, path: AGENTS.md }
+    pattern: "TODO\\(kickoff\\)"
+    match: not_contains
+  - name: contract-states-eu-residency
+    type: regex
+    target: { source: file, path: AGENTS.md }
+    pattern: "\\bEU\\b|European Union|Europe"
+  - name: import-only
+    type: regex
+    target: { source: file, path: CLAUDE.md }
+    pattern: "^@AGENTS\\.md\\s*$"
+  - name: a-decision-was-recorded
+    type: file_exists
+    path: "docs/adr/20*.md"
+  - name: first-plan-state
+    type: file_exists
+    path: "docs/plans/active/*/STATE.md"
+  - name: owner-told-to-require-the-check
+    type: regex
+    pattern: "Verify"
+  - name: owner-told-about-the-labels
+    type: regex
+    pattern: "decide"

@@ -1,0 +1,30 @@
+name: Weekly digest
+
+on:
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: write
+
+jobs:
+  digest:
+    name: Decisions of the week
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # Pull request text is data: it travels through files, never through a shell expansion.
+      - run: |
+          since="$(date -u -d '7 days ago' +%F)"
+          gh pr list --state merged --search "merged:>=${since}" --json number,title,url,body --limit 200 > pulls.json
+          node scripts/weekly-digest.mjs < pulls.json > digest.md
+          gh issue create --title "Decisions, week ending $(date -u +%F)" --body-file digest.md --label digest

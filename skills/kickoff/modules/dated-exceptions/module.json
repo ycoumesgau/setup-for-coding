@@ -1,0 +1,10 @@
+{
+  "name": "dated-exceptions",
+  "trigger": "The first time a rule of the contract must be broken for a while: a residency rule waiting for a contract, real data allowed in one measurement, a check switched off during a migration.",
+  "adds": "exceptions.json and a check that fails the day an exception expires, so that a temporary state cannot become the regime by being forgotten.",
+  "verify": { "fast": [{ "name": "dated exceptions", "run": "node scripts/exceptions-check.mjs" }] },
+  "limits": [
+    "It proves the date, not that the code behind the exception was removed: the entry says which test must turn red.",
+    "Renewing an exception is a change to exceptions.json, reviewed like any other: say why the first date was missed."
+  ]
+}

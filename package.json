@@ -1,0 +1,11 @@
+{
+  "name": "setup-for-coding",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "verify": "node scripts/verify.mjs",
+    "test": "node --test"
+  }
+}
